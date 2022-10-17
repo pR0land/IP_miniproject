@@ -68,7 +68,7 @@ def slice_roi(roi):
     return output
 
 
-ROI = return_single_image(gameboard_list, 12)
+ROI = return_single_image(gameboard_list, 18)
 
 slices = slice_roi(ROI)
 
