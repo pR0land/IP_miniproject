@@ -109,7 +109,7 @@ def getType(slice):
     return type
 
 
-ROI = return_single_image(gameboard_list, 16)
+ROI = return_single_image(gameboard_list, 23)
 
 slices = slice_roi(ROI)
 
@@ -128,10 +128,10 @@ for y, row in enumerate(slices):
         x_coord = int((x*ROI.shape[1]/5)+ROI.shape[1]/10)
         y_coord = int((y * ROI.shape[0]/5) + ROI.shape[0]/10)
         slice_text = f'{sliceType}'
-        cv.putText(ROI, slice_text, (x_coord, y_coord), cv.FONT_HERSHEY_PLAIN, 1, (0, 0, 255))
+        #cv.putText(ROI, slice_text, (x_coord, y_coord), cv.FONT_HERSHEY_PLAIN, 1, (0, 0, 255))
         print(f'({y,x}). (BGR):{int(slices[y][x][:,:,0].mean()),int(slices[y][x][:,:,1].mean()),int(slices[y][x][:,:,2].mean())}. (Center,Border): {slice_cutter(slice)}')
 
 
 cv.imshow('Roi_with_contours', ROI)
-cv.imshow('Slice', slices[1][3])
+#cv.imshow('Slice', slices[1][3])
 cv.waitKey(0)
