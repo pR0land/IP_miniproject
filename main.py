@@ -2,13 +2,15 @@ import cv2 as cv
 import numpy as np
 import math
 from matplotlib import pyplot as plt
+from scipy import stats
+from statistics import mode
 
-gameboard_list = []
-gameareas_list = []
+gameboardList = []
+gameareasList = []
 
-tile_types = ['wp', 'w1k', 'dp', 'd1k', 'fp', 'f1k', 'gp', 'g1k', 'g2k', 'mp', 'm1k', 'm2k', 'm3k', 'wlp', 'wl1k',
-              'wl2k']
-binsize = 16
+tileTypes = ['water_0', 'water_1', 'desert_0', 'desert_1', 'forest_0', 'forest_1', 'grass_0', 'grass_1',
+             'grass_2', 'mine_0', 'mine_1', 'mine_2', 'mine_3', 'waste_0', 'waste_1', 'waste_2']
+binsize = 8
 
 
 def add_boards():
@@ -29,8 +31,8 @@ def add_areas():
     return temp_list
 
 
-gameboard_list.extend(add_boards())
-gameareas_list.extend(add_areas())
+gameboardList.extend(add_boards())
+gameareasList.extend(add_areas())
 
 
 def show_list_of_images(list):
@@ -99,12 +101,17 @@ def defineCenterAndBorder(slice):
     return cut_slice
 
 
-def getType(slice):
-    feature_vectors = createTileFeaturevectorArray()
+def getType(slice, name):
+    data = createTileFeaturevectorArray()
+    type, distance = kNearestNeighbor(slice, data)
 
+    """
     B = slice[:, :, 0].mean()
     G = slice[:, :, 1].mean()
     R = slice[:, :, 2].mean()
+
+    distance = [48, 48, 48, 10000]
+    type = ['None', 'None', 'None', 'Nej']
 
     meanArray = [[150, 80, 14, 'wp'], [113, 80, 43, 'w1k'],
                  [22, 60, 46, 'fp'], [27, 62, 57, 'f1k'],
@@ -127,8 +134,6 @@ def getType(slice):
                        [58, 93, 103, 'wlp'], [50, 86, 98, 'wl1k'], [45, 83, 96, 'wl2k'],
                        [27, 151, 98, 'gp'], [24, 103, 100, 'g1k'], [37, 111, 122, 'g2k']]
 
-    distance = [48, 48, 48, 10000]
-    type = ['None', 'None', 'None', 'Nej']
 
     for i, tile_type in enumerate(meanArray):
         new_distance = math.sqrt((B - tile_type[0]) ** 2 + (G - tile_type[1]) ** 2 + (R - tile_type[2]) ** 2)
@@ -148,16 +153,17 @@ def getType(slice):
             distance[2] = new_distance
             type[2] = tile_type[3]
 
-    sliceVector = calculateImageHistogramBinVector(slice, binsize)
+    sliceVector = calculateImageHistogramBinVector(slice, binsize, name)
     # distance = 300
     # type[3] = 'Nej'
 
     for tileType, featureVector in feature_vectors.items():
         new_distance = calculateEuclidianDistance(sliceVector, featureVector)
-        #print(new_distance)
+        # print(new_distance)
         if new_distance < distance[3]:
             distance[3] = new_distance
             type[3] = tileType
+    """
 
     return [type, distance]
 
@@ -167,39 +173,54 @@ def calculateEuclidianDistance(feature_vector1, feature_vector2):
     return dist
 
 
-def calculateImageHistogramBinVector(image, bins: int, name,factor: int = 255):
-    # Hvis Grayscale / har kun en farvekanal
-    if (len(image.shape) == 2):
-        hist = np.histogram(image, bins, [0, 256])
+def calculateImageHistogramBinVector(image, bins: int, name, factor: int = 255):
+    # Vi laver et histrogram til hver farvekanal
+    B_hist = np.histogram(image[:, :, 0], bins, [0, 256])
+    G_hist = np.histogram(image[:, :, 1], bins, [0, 256])
+    R_hist = np.histogram(image[:, :, 2], bins, [0, 256])
 
-    # Hvis billedet har farvekanaler/er BGR
-    elif (len(image.shape) == 3):
-        # Vi laver et histrogram til hver farvekanal
-        B_hist, B_bins = np.histogram(image[:, :, 0], bins, [0, 256])
-        G_hist, G_bins = np.histogram(image[:, :, 1], bins, [0, 256])
-        R_hist, R_bins = np.histogram(image[:, :, 2], bins, [0, 256])
+    # Vi fyrer alle histogrammer ind i røven ad hinanden i et ny array 'hist' for at få det som en feature vektor
+    hist = np.concatenate((B_hist[0], G_hist[0], R_hist[0]))
 
-        fig = plt.figure()
-        fig.suptitle(name, fontsize=15)
+    B_h, B_bins = np.histogram(image[:, :, 0], bins, [0, 256])
+    G_h, G_bins = np.histogram(image[:, :, 1], bins, [0, 256])
+    R_h, R_bins = np.histogram(image[:, :, 2], bins, [0, 256])
 
-        width = 0.7*(B_bins[1]-B_bins[0])
-        plt.subplot(1,3,1)
-        plt.ylim([0, 10000])
-        plt.title('Blue')
-        plt.bar(B_bins[:-1],B_hist,width=width,color='blue', label = 'Blue')
-        plt.subplot(1,3,2)
-        plt.ylim([0, 10000])
-        plt.title('Green')
-        plt.bar(G_bins[:-1],G_hist,width=width,color='green', label = 'Green')
-        plt.subplot(1,3,3)
-        plt.ylim([0, 10000])
-        plt.title('Red')
-        plt.bar(R_bins[:-1],R_hist,width=width,color='red', label = 'Red')
+    fig = plt.figure()
+    fig.suptitle(name, fontsize=15)
+    width = 0.7 * (B_bins[1] - B_bins[0])
+    plt.subplot(1, 3, 1)
+    plt.ylim([0, 10000])
+    plt.title('Blue')
+    plt.bar(B_bins[:-1], B_h, width=width, color='blue', label='Blue')
+    plt.subplot(1, 3, 2)
+    plt.ylim([0, 10000])
+    plt.title('Green')
+    plt.bar(G_bins[:-1], G_h, width=width, color='green', label='Green')
+    plt.subplot(1, 3, 3)
+    plt.ylim([0, 10000])
+    plt.title('Red')
+    plt.bar(R_bins[:-1], R_h, width=width, color='red', label='Red')
+    fig.show()
 
-        plt.show()
+    def createHistVector(hist):
+        hist_max = max(hist)
 
-        # Vi fyrer alle histogrammer ind i røven ad hinanden i et ny array 'hist' for at få det som en feature vektor
-        #hist = np.concatenate((B_hist[0], G_hist[0], R_hist[0]))
+        if list(hist).index(hist_max) == 0:
+            hist_index = 1
+        elif list(hist).index(hist_max) == binsize - 1:
+            hist_index = binsize - 2
+        else:
+            hist_index = list(hist).index(hist_max)
+
+        hist_lower = hist_index - 1
+        hist_upper = hist_index + 1
+
+        indexDescriptor = (hist[hist_index] + hist[hist_lower] + hist[hist_upper]) / np.sum(hist)
+
+        hist_vector = [indexDescriptor, hist_lower, hist_index, hist_upper]
+
+        return hist_vector
 
     # normaliserer histogrammet således at værdierne ligger mellem 0 og 1
     """
@@ -209,53 +230,107 @@ def calculateImageHistogramBinVector(image, bins: int, name,factor: int = 255):
         hist *= factor
     """
 
-    #return hist
+    return [createHistVector(B_hist[0]), createHistVector(G_hist[0]), createHistVector(R_hist[0])]
 
 
 def saveTileVectors():
-    def saveVector(fileName):
-        img = cv.imread(f'King Domino dataset/Cropped_Tiles/{fileName}.jpg')
-        np.save(f'King Domino dataset/Cropped_Tiles/{fileName}', calculateImageHistogramBinVector(img, binsize, fileName))
+    def saveVector(fileName, tileType):
+        img = cv.imread(f'King Domino dataset/Cropped_Tiles/{tileType}/{fileName}.jpg')
+        np.save(f'King Domino dataset/Cropped_Tiles/{tileType}/{fileName}',
+                calculateImageHistogramBinVector(img, binsize, fileName))
 
-    for tile in tile_types:
-        saveVector(tile)
+    for tileType in tileTypes:
+        for tile in range(10):
+            saveVector(tile, tileType)
+
+
+def calculateBinIndexDistance(sliceBINdexVector, data):
+    # Find distance mellem descriptors
+
+    # Find vægt mellem indicer
+    weightArray = []
+
+    for i, vector in enumerate(sliceBINdexVector):
+        print(sliceBINdexVector[i][1:] == data[i][1:])
+
+
+def kNearestNeighbor(slice, data):
+    sliceHist = calculateImageHistogramBinVector(slice, binsize, '')
+
+    tileTypeArray = ['None', 'None', 'None', 'None', 'None']
+    distanceArray = [10000, 10000, 10000, 10000, 10000]
+
+    for (tileType, tiles) in data.items():
+        for tile in tiles:
+            new_distance = calculateBinIndexDistance(sliceHist, tile)
+            for i, score in enumerate(distanceArray):
+                if (new_distance < score):
+                    distanceArray[i] = new_distance
+                    tileTypeArray[i] = tileType
+                    break
+
+    tileType = mode(tileTypeArray)
+    distance = distanceArray[tileTypeArray.index(tileType)]
+
+    return [tileType, distance]
 
 
 def createTileFeaturevectorArray():
     featureVectors = {}
-    for tile in tile_types:
-        featureVectors[tile] = np.load(f'King Domino dataset/Cropped_Tiles/{tile}.npy')
+
+    for tileType in tileTypes:
+        tileArray = []
+        for tile in range(10):
+            tileArray.append(np.load(f'King Domino dataset/Cropped_Tiles/{tileType}/{tile}.npy', allow_pickle=True))
+        featureVectors[tileType] = tileArray
 
     return featureVectors
+
+
+def calculateSliceColor_Mode(slice):
+    b = stats.mode(slice[:, :, 0])
+    g = stats.mode(slice[:, :, 1])
+    r = stats.mode(slice[:, :, 2])
+    return [b, g, r]
+
+
+def calculateSliceColor_Median(slice):
+    b = np.median(slice[:, :, 0])
+    g = np.median(slice[:, :, 1])
+    r = np.median(slice[:, :, 2])
+    return [b, g, r]
 
 
 ############################################ Method calls
 
 
-saveTileVectors()
-"""
-ROI = return_single_image(gameboard_list, 17)
+# saveTileVectors()
+# print(createTileFeaturevectorArray())
+
+ROI = return_single_image(gameboardList, 73)
 # mROI = cv.medianBlur(ROI, 5)
 slices = slice_roi(ROI)
 
-
 for y, row in enumerate(slices):
     for x, slice in enumerate(row):
-        sliceType, distance = getType(slice)
+        sliceType, distance = getType(slice, f'{y, x}')
+        # print(calculateSliceColor_Median(slice))
+        # print(calculateSliceColor_Mode(slice))
 
         x_coord = int((x * ROI.shape[1] / 5) + 5)
         y_coord = int((y * ROI.shape[0] / 5) + ROI.shape[0] / 20)
 
-        cv.putText(ROI, f'{sliceType[0]}: {int(distance[0])}', (x_coord, y_coord + 00), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
-        cv.putText(ROI, f'{sliceType[1]}: {int(distance[1])}', (x_coord, y_coord + 15), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
-        cv.putText(ROI, f'{sliceType[2]}: {int(distance[2])}', (x_coord, y_coord + 30), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
-        cv.putText(ROI, f'{sliceType[3]}: {int(distance[3])}', (x_coord, y_coord + 45), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+        cv.putText(ROI, f'{sliceType}:', (x_coord, y_coord + 00), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+        cv.putText(ROI, f'{int(distance)}', (x_coord, y_coord + 15), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+        cv.imshow(f'{y, x}', slice)
+        # cv.putText(ROI, f'{sliceType[1]}: {int(distance)}', (x_coord, y_coord + 15), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+        # cv.putText(ROI, f'{sliceType[2]}: {int(distance)}', (x_coord, y_coord + 30), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+        # cv.putText(ROI, f'{sliceType[3]}: {int(distance)}', (x_coord, y_coord + 45), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
 
         # print(f'({y, x}). (BGR):{int(slices[y][x][:, :, 0].mean()), int(slices[y][x][:, :, 1].mean()), int(slices[y][x][:, :, 2].mean())}. (Center,Border): {defineCenterAndBorder(slice)}')
-"""
 
+cv.imshow('Roi_with_contours', ROI)
 
-
-#cv.imshow('Roi_with_contours', ROI)
-#cv.imshow('Slice', slices[4][2])
-#cv.waitKey(0)
+calculateImageHistogramBinVector(cv.imread('King Domino dataset/Cropped_Tiles/water_0/0.jpg'), binsize, 'water0')
+# cv.imshow('Slice', slices[4][2])
+cv.waitKey(0)
