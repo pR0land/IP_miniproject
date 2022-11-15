@@ -1,9 +1,14 @@
 import cv2 as cv
 import numpy as np
 import math
+from matplotlib import pyplot as plt
 
 gameboard_list = []
 gameareas_list = []
+
+tile_types = ['wp', 'w1k', 'dp', 'd1k', 'fp', 'f1k', 'gp', 'g1k', 'g2k', 'mp', 'm1k', 'm2k', 'm3k', 'wlp', 'wl1k',
+              'wl2k']
+binsize = 16
 
 
 def add_boards():
@@ -68,18 +73,26 @@ def slice_roi(roi):
     return output
 
 
-def slice_cutter(slice):
-    center = slice[int(slice.shape[0]/8):int((slice.shape[0]/8)*7), int(slice.shape[1]/8):int((slice.shape[1]/8)*7)]
-    centerMean = [int(center[:,:,0].mean()),int(center[:,:,1].mean()),int(center[:,:,2].mean())]
+def defineCenterAndBorder(slice):
+    center = slice[int(slice.shape[0] / 8):int((slice.shape[0] / 8) * 7),
+             int(slice.shape[1] / 8):int((slice.shape[1] / 8) * 7)]
+    centerMean = [int(center[:, :, 0].mean()), int(center[:, :, 1].mean()), int(center[:, :, 2].mean())]
 
-    top_border = slice[0:int(slice.shape[0]/8),:]
-    bot_border = slice[int(slice.shape[0]-slice.shape[0]/8):slice.shape[0],:]
-    left_border = slice[int(slice.shape[0]/8):int(slice.shape[0]-slice.shape[0]/8),0:int(slice.shape[1]/8)]
-    right_border = slice[int(slice.shape[0]/8):int(slice.shape[0]-slice.shape[0]/8),int(slice.shape[1]-slice.shape[1]/8):slice.shape[1]]
+    top_border = slice[0:int(slice.shape[0] / 8), :]
+    bot_border = slice[int(slice.shape[0] - slice.shape[0] / 8):slice.shape[0], :]
+    left_border = slice[int(slice.shape[0] / 8):int(slice.shape[0] - slice.shape[0] / 8), 0:int(slice.shape[1] / 8)]
+    right_border = slice[int(slice.shape[0] / 8):int(slice.shape[0] - slice.shape[0] / 8),
+                   int(slice.shape[1] - slice.shape[1] / 8):slice.shape[1]]
 
-    border_mean = [int((top_border[:,:,0].mean()+bot_border[:,:,0].mean()+left_border[:,:,0].mean()+right_border[:,:,0].mean())/4),
-                   int((top_border[:,:,1].mean()+bot_border[:,:,1].mean()+left_border[:,:,1].mean()+right_border[:,:,1].mean())/4),
-                   int((top_border[:,:,2].mean()+bot_border[:,:,2].mean()+left_border[:,:,2].mean()+right_border[:,:,2].mean())/4)]
+    border_mean = [int((top_border[:, :, 0].mean() + bot_border[:, :, 0].mean() + left_border[:, :,
+                                                                                  0].mean() + right_border[:, :,
+                                                                                              0].mean()) / 4),
+                   int((top_border[:, :, 1].mean() + bot_border[:, :, 1].mean() + left_border[:, :,
+                                                                                  1].mean() + right_border[:, :,
+                                                                                              1].mean()) / 4),
+                   int((top_border[:, :, 2].mean() + bot_border[:, :, 2].mean() + left_border[:, :,
+                                                                                  2].mean() + right_border[:, :,
+                                                                                              2].mean()) / 4)]
 
     cut_slice = [centerMean, border_mean]
 
@@ -87,51 +100,162 @@ def slice_cutter(slice):
 
 
 def getType(slice):
+    feature_vectors = createTileFeaturevectorArray()
+
     B = slice[:, :, 0].mean()
     G = slice[:, :, 1].mean()
     R = slice[:, :, 2].mean()
 
-    meanArray = [['wp', 150, 80, 14], ['w1k', 113, 80, 43], ['fp', 22, 60, 46],
-                 ['f1k', 27, 62, 57], ['dp', 7, 155, 179], ['d1k', 19, 142, 169],
-                 ['mp', 26, 51, 59], ['m1k', 27, 68, 77], ['m2k', 26, 51, 61],
-                 ['m3k', 33, 62, 73], ['wlp', 60, 100, 111], ['wl1k', 54, 93, 104],
-                 ['wl2k', 48, 89, 103], ['gp', 28, 146, 100], ['g1k', 25, 116, 103], ['g2k', 34, 126, 114]]
+    meanArray = [[150, 80, 14, 'wp'], [113, 80, 43, 'w1k'],
+                 [22, 60, 46, 'fp'], [27, 62, 57, 'f1k'],
+                 [7, 155, 179, 'dp'], [19, 142, 169, 'd1k'],
+                 [26, 51, 59, 'mp'], [27, 68, 77, 'm1k'], [26, 51, 61, 'm2k'], [33, 62, 73, 'm3k'],
+                 [60, 100, 111, 'wlp'], [54, 93, 104, 'wl1k'], [48, 89, 103, 'wl2k'],
+                 [28, 146, 100, 'gp'], [25, 116, 103, 'g1k'], [34, 126, 114, 'g2k']]
 
-    distance = 25.0
-    type = 'Undefined'
+    borderMeanArray = [[136, 79, 23, 'wp'], [126, 73, 24, 'w1k'],
+                       [23, 72, 61, 'fp'], [22, 67, 59, 'f1k'],
+                       [15, 160, 180, 'dp'], [16, 151, 174, 'd1k'],
+                       [19, 37, 43, 'mp'], [26, 38, 42, 'm1k'], [22, 40, 47, 'm2k'], [25, 39, 46, 'm3k'],
+                       [56, 102, 114, 'wlp'], [58, 102, 112, 'wl1k'], [50, 98, 112, 'wl2k'],
+                       [31, 140, 100, 'gp'], [25, 127, 91, 'g1k'], [32, 137, 105, 'g2k']]
+
+    centerMeanArray = [[162, 79, 5, 'wp'], [97, 81, 54, 'w1k'],
+                       [18, 43, 28, 'fp'], [29, 57, 55, 'f1k'],
+                       [9, 172, 194, 'dp'], [21, 135, 161, 'd1k'],
+                       [34, 54, 61, 'mp'], [34, 58, 67, 'm1k'], [31, 67, 83, 'm2k'], [38, 73, 91, 'm3k'],
+                       [58, 93, 103, 'wlp'], [50, 86, 98, 'wl1k'], [45, 83, 96, 'wl2k'],
+                       [27, 151, 98, 'gp'], [24, 103, 100, 'g1k'], [37, 111, 122, 'g2k']]
+
+    distance = [48, 48, 48, 10000]
+    type = ['None', 'None', 'None', 'Nej']
 
     for i, tile_type in enumerate(meanArray):
-        new_distance = math.sqrt((B - tile_type[1]) ** 2 + (G - tile_type[2]) ** 2 + (R - tile_type[3]) ** 2)
-        if new_distance < distance:
-            distance = new_distance
-            type = tile_type[0]
+        new_distance = math.sqrt((B - tile_type[0]) ** 2 + (G - tile_type[1]) ** 2 + (R - tile_type[2]) ** 2)
+        if new_distance < distance[0]:
+            distance[0] = new_distance
+            type[0] = tile_type[3]
 
-    return type
+    for i, tile_type in enumerate(borderMeanArray):
+        new_distance = math.sqrt((B - tile_type[0]) ** 2 + (G - tile_type[1]) ** 2 + (R - tile_type[2]) ** 2)
+        if new_distance < distance[1]:
+            distance[1] = new_distance
+            type[1] = tile_type[3]
+
+    for i, tile_type in enumerate(centerMeanArray):
+        new_distance = math.sqrt((B - tile_type[0]) ** 2 + (G - tile_type[1]) ** 2 + (R - tile_type[2]) ** 2)
+        if new_distance < distance[2]:
+            distance[2] = new_distance
+            type[2] = tile_type[3]
+
+    sliceVector = calculateImageHistogramBinVector(slice, binsize)
+    # distance = 300
+    # type[3] = 'Nej'
+
+    for tileType, featureVector in feature_vectors.items():
+        new_distance = calculateEuclidianDistance(sliceVector, featureVector)
+        #print(new_distance)
+        if new_distance < distance[3]:
+            distance[3] = new_distance
+            type[3] = tileType
+
+    return [type, distance]
 
 
-ROI = return_single_image(gameboard_list, 23)
+def calculateEuclidianDistance(feature_vector1, feature_vector2):
+    dist = np.sqrt(np.sum((feature_vector1 - feature_vector2) ** 2))
+    return dist
 
+
+def calculateImageHistogramBinVector(image, bins: int, name,factor: int = 255):
+    # Hvis Grayscale / har kun en farvekanal
+    if (len(image.shape) == 2):
+        hist = np.histogram(image, bins, [0, 256])
+
+    # Hvis billedet har farvekanaler/er BGR
+    elif (len(image.shape) == 3):
+        # Vi laver et histrogram til hver farvekanal
+        B_hist, B_bins = np.histogram(image[:, :, 0], bins, [0, 256])
+        G_hist, G_bins = np.histogram(image[:, :, 1], bins, [0, 256])
+        R_hist, R_bins = np.histogram(image[:, :, 2], bins, [0, 256])
+
+        fig = plt.figure()
+        fig.suptitle(name, fontsize=15)
+
+        width = 0.7*(B_bins[1]-B_bins[0])
+        plt.subplot(1,3,1)
+        plt.ylim([0, 10000])
+        plt.title('Blue')
+        plt.bar(B_bins[:-1],B_hist,width=width,color='blue', label = 'Blue')
+        plt.subplot(1,3,2)
+        plt.ylim([0, 10000])
+        plt.title('Green')
+        plt.bar(G_bins[:-1],G_hist,width=width,color='green', label = 'Green')
+        plt.subplot(1,3,3)
+        plt.ylim([0, 10000])
+        plt.title('Red')
+        plt.bar(R_bins[:-1],R_hist,width=width,color='red', label = 'Red')
+
+        plt.show()
+
+        # Vi fyrer alle histogrammer ind i røven ad hinanden i et ny array 'hist' for at få det som en feature vektor
+        #hist = np.concatenate((B_hist[0], G_hist[0], R_hist[0]))
+
+    # normaliserer histogrammet således at værdierne ligger mellem 0 og 1
+    """
+    hist = hist.astype(np.float64)
+    if (hist.max() != 0 or None):
+        hist /= int(hist.max())
+        hist *= factor
+    """
+
+    #return hist
+
+
+def saveTileVectors():
+    def saveVector(fileName):
+        img = cv.imread(f'King Domino dataset/Cropped_Tiles/{fileName}.jpg')
+        np.save(f'King Domino dataset/Cropped_Tiles/{fileName}', calculateImageHistogramBinVector(img, binsize, fileName))
+
+    for tile in tile_types:
+        saveVector(tile)
+
+
+def createTileFeaturevectorArray():
+    featureVectors = {}
+    for tile in tile_types:
+        featureVectors[tile] = np.load(f'King Domino dataset/Cropped_Tiles/{tile}.npy')
+
+    return featureVectors
+
+
+############################################ Method calls
+
+
+saveTileVectors()
+"""
+ROI = return_single_image(gameboard_list, 17)
+# mROI = cv.medianBlur(ROI, 5)
 slices = slice_roi(ROI)
 
-"""
-for y in range(len(slices)):
-    for x in range(len(slices[y])):
-        print(f'({y},{x})')
-        print("B-gennemsnit "+ str(slices[y][x][:,:,0].mean()))
-        print("G-gennemsnit "+ str(slices[y][x][:,:,1].mean()))
-        print("R-gennemsnit "+ str(slices[y][x][:,:,2].mean())+"\n")
-"""
 
 for y, row in enumerate(slices):
     for x, slice in enumerate(row):
-        sliceType = getType(slice)
-        x_coord = int((x*ROI.shape[1]/5)+ROI.shape[1]/10)
-        y_coord = int((y * ROI.shape[0]/5) + ROI.shape[0]/10)
-        slice_text = f'{sliceType}'
-        #cv.putText(ROI, slice_text, (x_coord, y_coord), cv.FONT_HERSHEY_PLAIN, 1, (0, 0, 255))
-        print(f'({y,x}). (BGR):{int(slices[y][x][:,:,0].mean()),int(slices[y][x][:,:,1].mean()),int(slices[y][x][:,:,2].mean())}. (Center,Border): {slice_cutter(slice)}')
+        sliceType, distance = getType(slice)
+
+        x_coord = int((x * ROI.shape[1] / 5) + 5)
+        y_coord = int((y * ROI.shape[0] / 5) + ROI.shape[0] / 20)
+
+        cv.putText(ROI, f'{sliceType[0]}: {int(distance[0])}', (x_coord, y_coord + 00), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+        cv.putText(ROI, f'{sliceType[1]}: {int(distance[1])}', (x_coord, y_coord + 15), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+        cv.putText(ROI, f'{sliceType[2]}: {int(distance[2])}', (x_coord, y_coord + 30), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+        cv.putText(ROI, f'{sliceType[3]}: {int(distance[3])}', (x_coord, y_coord + 45), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+
+        # print(f'({y, x}). (BGR):{int(slices[y][x][:, :, 0].mean()), int(slices[y][x][:, :, 1].mean()), int(slices[y][x][:, :, 2].mean())}. (Center,Border): {defineCenterAndBorder(slice)}')
+"""
 
 
-cv.imshow('Roi_with_contours', ROI)
-#cv.imshow('Slice', slices[1][3])
-cv.waitKey(0)
+
+#cv.imshow('Roi_with_contours', ROI)
+#cv.imshow('Slice', slices[4][2])
+#cv.waitKey(0)
