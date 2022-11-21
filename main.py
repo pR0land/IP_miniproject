@@ -371,7 +371,7 @@ def getScore(sliceTypes):
 saveTileVectors()
 # print(createTileFeaturevectorArray())
 
-ROI = return_single_image(gameboardList, 54)
+ROI = return_single_image(gameboardList, 23)
 # mROI = cv.medianBlur(ROI, 5)
 slices = slice_roi(ROI)
 sliceTypes = []
