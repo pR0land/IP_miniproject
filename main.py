@@ -318,6 +318,14 @@ def calculateSliceColor_Mean(slice):
     r = slice[:, :, 2].mean()
     return [b, g, r]
 
+def getScore(slices, sliceTypes):
+    ArrayOfIslands = []
+
+    
+    score = 0
+    for island in ArrayOfIslands:
+        score += len(island)*np.sum(np.array(island))
+    return score
 ############################################ Method calls
 
 
@@ -327,10 +335,12 @@ saveTileVectors()
 ROI = return_single_image(gameboardList, 54)
 # mROI = cv.medianBlur(ROI, 5)
 slices = slice_roi(ROI)
-
+sliceTypes = []
 for y, row in enumerate(slices):
+    sliceTypeRow = []
     for x, slice in enumerate(row):
         sliceType, distance = getType(slice, f'{y, x}')
+        sliceTypeRow.append(sliceType)
         # print(calculateSliceColor_Median(slice))
         # print(calculateSliceColor_Mode(slice))
 
@@ -345,7 +355,7 @@ for y, row in enumerate(slices):
         # cv.putText(ROI, f'{sliceType[3]}: {int(distance)}', (x_coord, y_coord + 45), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
 
         # print(f'({y, x}). (BGR):{int(slices[y][x][:, :, 0].mean()), int(slices[y][x][:, :, 1].mean()), int(slices[y][x][:, :, 2].mean())}. (Center,Border): {defineCenterAndBorder(slice)}')
-
+    sliceTypes.append(sliceTypeRow)
 cv.imshow('Roi_with_contours', ROI)
 
 # cv.imshow('Slice', slices[4][2])
