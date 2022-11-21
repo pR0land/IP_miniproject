@@ -251,7 +251,11 @@ def calculateBinIndexDistance(sliceBINdexVector, data):
     weightArray = []
 
     for i, vector in enumerate(sliceBINdexVector):
-        print(sliceBINdexVector[i][1:] == data[i][1:])
+        numbersInCommon = 0
+        for index in range(1,len(vector)):
+            if index in data[i]:
+                numbersInCommon += 0.33
+        weightArray.append(numbersInCommon*vector[0])
 
 
 def kNearestNeighbor(slice, data):
