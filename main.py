@@ -1,3 +1,5 @@
+from collections import deque
+
 import cv2 as cv
 import numpy as np
 import math
@@ -269,7 +271,7 @@ def calculateMeanDistance(slice, data):
 def kNearestNeighbor(slice, data):
     sliceHist = calculateSliceColor_Mean(slice)
 
-    tileTypeArray = ['None', 'None', 'None', 'None', 'None']
+    tileTypeArray = ['None_0', 'None_0', 'None_0', 'None_0', 'None_0']
     distanceArray = [20, 20, 20, 20, 20]
 
     for (tileType, tiles) in data.items():
@@ -318,13 +320,50 @@ def calculateSliceColor_Mean(slice):
     r = slice[:, :, 2].mean()
     return [b, g, r]
 
-def getScore(slices, sliceTypes):
-    ArrayOfIslands = []
+def getScore(sliceTypes):
+    def startBurning(startPos, burningImage):
+        burnQueue = deque()
+        currentIsland = []
+        burnQueue.append(startPos)
+        while(len(burnQueue) > 0):
+            nextpos = burnQueue.pop()
+            currentIsland.append([nextpos[0], nextpos[1]])
+            if(nextpos[0]- 1 >= 0 and [nextpos[0]- 1,nextpos[1]] not in currentIsland and [nextpos[0]- 1,nextpos[1]] not in burnQueue and burningImage[nextpos[0]][nextpos[1]].split("_")[0] ==
+                    burningImage[nextpos[0]-1][nextpos[1]].split("_")[0]):
+                burnQueue.append([nextpos[0] - 1, nextpos[1]])
+            if (nextpos[0] + 1 <= 4 and [nextpos[0]+ 1,nextpos[1]] not in currentIsland and [nextpos[0]+ 1,nextpos[1]] not in burnQueue and burningImage[nextpos[0]][nextpos[1]].split("_")[0] ==
+                    burningImage[nextpos[0] + 1][nextpos[1]].split("_")[0]):
+                burnQueue.append([nextpos[0] + 1, nextpos[1]])
+            if (nextpos[1] - 1 >= 0 and [nextpos[0],nextpos[1]-1] not in currentIsland and [nextpos[0],nextpos[1]-1] not in burnQueue and burningImage[nextpos[0]][nextpos[1]].split("_")[0] ==
+                    burningImage[nextpos[0]][nextpos[1]-1].split("_")[0]):
+                burnQueue.append([nextpos[0], nextpos[1] - 1])
+            if (nextpos[1] + 1 <= 4 and [nextpos[0],nextpos[1] + 1] not in currentIsland and [nextpos[0],nextpos[1]+1] not in burnQueue and burningImage[nextpos[0]][nextpos[1]].split("_")[0] ==
+                    burningImage[nextpos[0]][nextpos[1] + 1].split("_")[0]):
+                burnQueue.append([nextpos[0], nextpos[1]+1])
+        return currentIsland
 
-    
+    ArrayOfIslands = []
+    for y, sliceTypeRow in enumerate(sliceTypes):
+        for x, sliceType in enumerate(sliceTypes):
+            found = False
+            for island in ArrayOfIslands:
+                if [y, x] in island:
+                    found = True
+                    break
+            if not found:
+                ArrayOfIslands.append(startBurning([y,x], sliceTypes))
+    ArrayOfIslandsAsCrowns = []
+    for currentIsland in ArrayOfIslands:
+        currentIslandAsCrowns = []
+        for pos in currentIsland:
+            currentIslandAsCrowns.append(int(sliceTypes[pos[0]][pos[1]].split("_")[1]))
+        ArrayOfIslandsAsCrowns.append(currentIslandAsCrowns)
+
     score = 0
-    for island in ArrayOfIslands:
-        score += len(island)*np.sum(np.array(island))
+    print(ArrayOfIslandsAsCrowns)
+    for island in ArrayOfIslandsAsCrowns:
+        score += len(island)*np.sum(island)
+    print(score)
     return score
 ############################################ Method calls
 
@@ -356,6 +395,8 @@ for y, row in enumerate(slices):
 
         # print(f'({y, x}). (BGR):{int(slices[y][x][:, :, 0].mean()), int(slices[y][x][:, :, 1].mean()), int(slices[y][x][:, :, 2].mean())}. (Center,Border): {defineCenterAndBorder(slice)}')
     sliceTypes.append(sliceTypeRow)
+print(sliceTypes)
+score = getScore(sliceTypes)
 cv.imshow('Roi_with_contours', ROI)
 
 # cv.imshow('Slice', slices[4][2])
