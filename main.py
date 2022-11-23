@@ -318,6 +318,7 @@ def calculateSliceColor_Mean(slice):
     b_mean = slice[:, :, 0].mean()
     g_mean = slice[:, :, 1].mean()
     r_mean = slice[:, :, 2].mean()
+
     return [b_mean, g_mean, r_mean]
 
 def getScore(sliceTypes):
