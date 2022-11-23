@@ -104,7 +104,7 @@ def defineCenterAndBorder(slice):
 
 
 def getType(slice, name):
-    data = createTileFeaturevectorArray()
+    data = loadTileVectorDictionary()
     type, distance = kNearestNeighbor(slice, data)
 
     """
@@ -233,6 +233,24 @@ def calculateImageHistogramBinVector(image, bins: int, name, factor: int = 255):
     return [createHistVector(B_hist[0]), createHistVector(G_hist[0]), createHistVector(R_hist[0])]
 
 
+def saveTileVectorDictionary():
+    featureVectors = {}
+
+    for tileType in tileTypes:
+        tileArray = []
+        for tile in range(10):
+            img = cv.imread(f'King Domino dataset/Cropped_Tiles/{tileType}/{tile}.jpg')
+            tileArray.append(np.array(calculateSliceColor_Mean(img)))
+        featureVectors[tileType] = tileArray
+
+    np.save(f'King Domino dataset/Cropped_Tiles/featureVectors', featureVectors)
+
+
+def loadTileVectorDictionary():
+    featureVectors = np.load(f'King Domino dataset/Cropped_Tiles/featureVectors.npy', allow_pickle=True)
+    return featureVectors
+
+"""
 def saveTileVectors():
     def saveVector(fileName, tileType):
         img = cv.imread(f'King Domino dataset/Cropped_Tiles/{tileType}/{fileName}.jpg')
@@ -253,6 +271,7 @@ def createTileFeaturevectorArray():
         featureVectors[tileType] = tileArray
 
     return featureVectors
+"""
 
 def calculateBinIndexDistance(sliceBINdexVector, data):
     # Find distance mellem descriptors
@@ -297,9 +316,6 @@ def kNearestNeighbor(slice, data):
     distance = distanceArray[0]
 
     return [tileType, distance]
-
-
-
 
 
 def calculateSliceColor_Mode(slice):
@@ -371,7 +387,6 @@ def getScore(sliceTypes):
 
 
 saveTileVectors()
-# print(createTileFeaturevectorArray())
 
 ROI = return_single_image(gameboardList, 23)
 # mROI = cv.medianBlur(ROI, 5)
@@ -397,8 +412,10 @@ for y, row in enumerate(slices):
 
         # print(f'({y, x}). (BGR):{int(slices[y][x][:, :, 0].mean()), int(slices[y][x][:, :, 1].mean()), int(slices[y][x][:, :, 2].mean())}. (Center,Border): {defineCenterAndBorder(slice)}')
     sliceTypes.append(sliceTypeRow)
-print(sliceTypes)
+#print(sliceTypes)
 score = getScore(sliceTypes)
+saveTileVectorDictionary()
+print(loadTileVectorDictionary())
 cv.imshow('Roi_with_contours', ROI)
 
 # cv.imshow('Slice', slices[4][2])
