@@ -236,13 +236,23 @@ def calculateImageHistogramBinVector(image, bins: int, name, factor: int = 255):
 def saveTileVectors():
     def saveVector(fileName, tileType):
         img = cv.imread(f'King Domino dataset/Cropped_Tiles/{tileType}/{fileName}.jpg')
-        np.save(f'King Domino dataset/Cropped_Tiles/{tileType}/{fileName}',
-                calculateSliceColor_Mean(img))
+        np.save(f'King Domino dataset/Cropped_Tiles/{tileType}/{fileName}', calculateSliceColor_Mean(img))
 
     for tileType in tileTypes:
         for tile in range(10):
             saveVector(tile, tileType)
 
+
+def createTileFeaturevectorArray():
+    featureVectors = {}
+
+    for tileType in tileTypes:
+        tileArray = []
+        for tile in range(10):
+            tileArray.append(np.load(f'King Domino dataset/Cropped_Tiles/{tileType}/{tile}.npy', allow_pickle=True))
+        featureVectors[tileType] = tileArray
+
+    return featureVectors
 
 def calculateBinIndexDistance(sliceBINdexVector, data):
     # Find distance mellem descriptors
@@ -289,16 +299,7 @@ def kNearestNeighbor(slice, data):
     return [tileType, distance]
 
 
-def createTileFeaturevectorArray():
-    featureVectors = {}
 
-    for tileType in tileTypes:
-        tileArray = []
-        for tile in range(10):
-            tileArray.append(np.load(f'King Domino dataset/Cropped_Tiles/{tileType}/{tile}.npy', allow_pickle=True))
-        featureVectors[tileType] = tileArray
-
-    return featureVectors
 
 
 def calculateSliceColor_Mode(slice):
