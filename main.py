@@ -68,12 +68,14 @@ def return_single_image(list, index):
 
 def sliceROI(roi):
     output = []
+
     for y in range(0, roi.shape[0], int(roi.shape[0] / 5)):
         y_line = []
         for x in range(0, roi.shape[1], int(roi.shape[1] / 5)):
             slice = roi[y: y + int(roi.shape[0] / 5), x:x + int(roi.shape[1] / 5)].copy()
             y_line.append(slice)
         output.append(y_line)
+
     return output
 
 
