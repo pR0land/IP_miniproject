@@ -206,7 +206,7 @@ def calculateImageHistogramBinVector(image, bins: int, name):
     hist = np.concatenate((B_hist[0], G_hist[0], R_hist[0]))
 
     # Hvis vi vil vise figuren for histogrmammet
-    #showHist(name)
+    # showHist(name)
 
     def createHistVector(hist):
         hist_max = max(hist)
@@ -255,6 +255,7 @@ def loadTileVectorDictionary():
     featureVectors = np.load(f'King Domino dataset/Cropped_Tiles/featureVectors.npy', allow_pickle=True).tolist()
     return featureVectors
 
+
 """
 def saveTileVectors():
     def saveVector(fileName, tileType):
@@ -296,7 +297,7 @@ def calculateBinIndexDistance(sliceBINdexVector, data):
 
     return math.sqrt(
         (weightArraySlice[0] - weightArrayData[0]) ** 2 + (weightArraySlice[1] - weightArrayData[1]) ** 2 + (
-                    weightArraySlice[2] - weightArrayData[2]) ** 2)
+                weightArraySlice[2] - weightArrayData[2]) ** 2)
 
 
 def calculateMedianDistance(slice, data):
@@ -329,7 +330,7 @@ def kNearestNeighbor(slice, data):
 def kNearestNeighbor_old(slice, data):
     meanVector = calculateSliceColor_Mean(slice)
 
-    th = 20 # threshold
+    th = 20  # threshold
     distanceArray = [th, th, th, th, th]
     tileTypeArray = ['None_0', 'None_0', 'None_0', 'None_0', 'None_0']
 
@@ -423,49 +424,61 @@ def getScore(sliceTypes):
     return score
 
 
-def getAllSliceTypes(slices):
+def getAllSliceTypes(slices, data):
     sliceTypes = []
+    distances = []
 
     for y, row in enumerate(slices):
         sliceTypeRow = []
+        distanceRow = []
+
         for x, slice in enumerate(row):
-            data = loadTileVectorDictionary()
             sliceType, distance = kNearestNeighbor(slice, data)
-
             sliceTypeRow.append(sliceType)
-            # print(calculateSliceColor_Median(slice))
-            # print(calculateSliceColor_Mode(slice))
-
-            x_coord = int((x * ROI.shape[1] / 5) + 5)
-            y_coord = int((y * ROI.shape[0] / 5) + ROI.shape[0] / 20)
-
-            cv.putText(ROI, f'{sliceType}:', (x_coord, y_coord + 00), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
-            cv.putText(ROI, f'{int(distance)}', (x_coord, y_coord + 15), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
-            cv.imshow(f'{y, x}', slice)
-            # cv.putText(ROI, f'{sliceType[1]}: {int(distance)}', (x_coord, y_coord + 15), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
-            # cv.putText(ROI, f'{sliceType[2]}: {int(distance)}', (x_coord, y_coord + 30), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
-            # cv.putText(ROI, f'{sliceType[3]}: {int(distance)}', (x_coord, y_coord + 45), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
-
-            # print(f'({y, x}). (BGR):{int(slices[y][x][:, :, 0].mean()), int(slices[y][x][:, :, 1].mean()), int(slices[y][x][:, :, 2].mean())}. (Center,Border): {defineCenterAndBorder(slice)}')
+            distanceRow.append(distance)
         sliceTypes.append(sliceTypeRow)
+        distances.append(distanceRow)
 
-    return sliceTypes
-
-############################################ Method calls
-
+    return [sliceTypes, distances]
 
 
+def addTileText(image, slices, sliceTypes, distances):
+    output_image = image.copy()
+
+    for y, row in enumerate(slices):
+        for x, slice in enumerate(row):
+            x_coord = int((x * output_image.shape[1] / 5) + 5)
+            y_coord = int((y * output_image.shape[0] / 5) + output_image.shape[0] / 20)
+
+            cv.putText(output_image, f'{sliceTypes[y][x]}:', (x_coord, y_coord + 00), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+            cv.putText(output_image, f'{int(distances[y][x])}', (x_coord, y_coord + 15), cv.FONT_HERSHEY_PLAIN, 1,
+                       (255, 255, 255))
+
+            # cv.imshow(f'{y, x}', slice)
+
+    return output_image
 
 
-
-
+### Main method call ###
 
 if __name__ == "__main__":
+    # INDLÆS DET BILLEDE SOM VI VIL ARBEJDE MED
     ROI = return_single_image(gameboardList, 23)
-    # saveTileVectorDictionary()
-    loadTileVectorDictionary()
-    sliceArray = sliceROI(ROI)
-    getAllSliceTypes(sliceArray)
 
-    cv.imshow('Roi_with_contours', ROI)
+    # INDLÆS DATA
+    # saveTileVectorDictionary()
+    data = loadTileVectorDictionary()
+
+    # OPRET ARRAY AF SLICES FRA GIVNE SPILLEPLADEBILLEDE
+    sliceArray = sliceROI(ROI)
+
+    # BESTEM ET ARRAY MED ALLE SLICES TILE-TYPER I MED TILSVARENDE KOORDINATER
+    sliceTypeArray, distanceArray = getAllSliceTypes(sliceArray, data)
+
+    # TILFØJ TEKST TIL ET OUTPUT BILLEDE
+    ROI_text = addTileText(ROI, sliceArray, sliceTypeArray, distanceArray)
+
+    # VIS BILLEDE
+    cv.imshow('ROI_with_text', ROI_text)
+    #cv.imshow('ROI',ROI)
     cv.waitKey(0)
