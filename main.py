@@ -1,5 +1,4 @@
 from collections import deque
-
 import cv2 as cv
 import numpy as np
 import math
@@ -174,7 +173,28 @@ def calculateEuclidianDistance(feature_vector1, feature_vector2):
     return dist
 
 
-def calculateImageHistogramBinVector(image, bins: int, name, factor: int = 255):
+def calculateImageHistogramBinVector(image, bins: int, name):
+    def showHist(fig_name):
+        B_h, B_bins = np.histogram(image[:, :, 0], bins, [0, 256])
+        G_h, G_bins = np.histogram(image[:, :, 1], bins, [0, 256])
+        R_h, R_bins = np.histogram(image[:, :, 2], bins, [0, 256])
+        fig = plt.figure()
+        fig.suptitle(fig_name, fontsize=15)
+        width = 0.7 * (B_bins[1] - B_bins[0])
+        plt.subplot(1, 3, 1)
+        plt.ylim([0, 10000])
+        plt.title('Blue')
+        plt.bar(B_bins[:-1], B_h, width=width, color='blue', label='Blue')
+        plt.subplot(1, 3, 2)
+        plt.ylim([0, 10000])
+        plt.title('Green')
+        plt.bar(G_bins[:-1], G_h, width=width, color='green', label='Green')
+        plt.subplot(1, 3, 3)
+        plt.ylim([0, 10000])
+        plt.title('Red')
+        plt.bar(R_bins[:-1], R_h, width=width, color='red', label='Red')
+        fig.show()
+
     # Vi laver et histrogram til hver farvekanal
     B_hist = np.histogram(image[:, :, 0], bins, [0, 256])
     G_hist = np.histogram(image[:, :, 1], bins, [0, 256])
@@ -183,26 +203,8 @@ def calculateImageHistogramBinVector(image, bins: int, name, factor: int = 255):
     # Vi fyrer alle histogrammer ind i røven ad hinanden i et ny array 'hist' for at få det som en feature vektor
     hist = np.concatenate((B_hist[0], G_hist[0], R_hist[0]))
 
-    B_h, B_bins = np.histogram(image[:, :, 0], bins, [0, 256])
-    G_h, G_bins = np.histogram(image[:, :, 1], bins, [0, 256])
-    R_h, R_bins = np.histogram(image[:, :, 2], bins, [0, 256])
-
-    # fig = plt.figure()
-    # fig.suptitle(name, fontsize=15)
-    # width = 0.7 * (B_bins[1] - B_bins[0])
-    # plt.subplot(1, 3, 1)
-    # plt.ylim([0, 10000])
-    # plt.title('Blue')
-    # plt.bar(B_bins[:-1], B_h, width=width, color='blue', label='Blue')
-    # plt.subplot(1, 3, 2)
-    # plt.ylim([0, 10000])
-    # plt.title('Green')
-    # plt.bar(G_bins[:-1], G_h, width=width, color='green', label='Green')
-    # plt.subplot(1, 3, 3)
-    # plt.ylim([0, 10000])
-    # plt.title('Red')
-    # plt.bar(R_bins[:-1], R_h, width=width, color='red', label='Red')
-    # fig.show()
+    # Hvis vi vil vise figuren for histogrmammet
+    #showHist(name)
 
     def createHistVector(hist):
         hist_max = max(hist)
@@ -248,7 +250,7 @@ def saveTileVectorDictionary():
 
 
 def loadTileVectorDictionary():
-    featureVectors = np.load(f'King Domino dataset/Cropped_Tiles/featureVectors.npy', allow_pickle=True)
+    featureVectors = np.load(f'King Domino dataset/Cropped_Tiles/featureVectors.npy', allow_pickle=True).tolist()
     return featureVectors
 
 """
@@ -274,6 +276,7 @@ def createTileFeaturevectorArray():
     return featureVectors
 """
 
+
 def calculateBinIndexDistance(sliceBINdexVector, data):
     # Find distance mellem descriptors
 
@@ -283,30 +286,56 @@ def calculateBinIndexDistance(sliceBINdexVector, data):
 
     for i, vector in enumerate(sliceBINdexVector):
         numbersInCommon = 1
-        for index in range(1,len(vector)):
+        for index in range(1, len(vector)):
             if index in data[i]:
                 numbersInCommon -= 0.3
-        weightArraySlice.append(numbersInCommon*vector[0])
-        weightArrayData.append(numbersInCommon*data[i][0])
+        weightArraySlice.append(numbersInCommon * vector[0])
+        weightArrayData.append(numbersInCommon * data[i][0])
 
-    return math.sqrt((weightArraySlice[0]-weightArrayData[0])**2+(weightArraySlice[1]-weightArrayData[1])**2+(weightArraySlice[2]-weightArrayData[2])**2)
+    return math.sqrt(
+        (weightArraySlice[0] - weightArrayData[0]) ** 2 + (weightArraySlice[1] - weightArrayData[1]) ** 2 + (
+                    weightArraySlice[2] - weightArrayData[2]) ** 2)
 
 
 def calculateMedianDistance(slice, data):
     return math.sqrt((slice[0] - data[0]) ** 2 + (slice[1] - data[1]) ** 2 + (slice[2] - data[2]) ** 2)
+
+
 def calculateModeDistance(slice, data):
     return math.sqrt((slice[0] - data[0]) ** 2 + (slice[1] - data[1]) ** 2 + (slice[2] - data[2]) ** 2)
+
+
 def calculateMeanDistance(slice, data):
     return math.sqrt((slice[0] - data[0]) ** 2 + (slice[1] - data[1]) ** 2 + (slice[2] - data[2]) ** 2)
-def kNearestNeighbor(slice, data):
-    sliceHist = calculateSliceColor_Mean(slice)
 
-    tileTypeArray = ['None_0', 'None_0', 'None_0', 'None_0', 'None_0']
-    distanceArray = [20, 20, 20, 20, 20]
+
+def kNearestNeighbor(slice, data):
+    meanVector = calculateSliceColor_Mean(slice)
+
+    distance = 20
+    currentType = 'None_0'
 
     for (tileType, tiles) in data.items():
         for tile in tiles:
-            new_distance = calculateMeanDistance(sliceHist, tile)
+            new_distance = calculateMeanDistance(meanVector, tile)
+            if (new_distance < distance):
+                distance = new_distance
+                currentType = tileType
+                break
+
+    return [currentType, distance]
+
+
+def kNearestNeighbor_old(slice, data):
+    meanVector = calculateSliceColor_Mean(slice)
+
+    th = 20 # threshold
+    distanceArray = [th, th, th, th, th]
+    tileTypeArray = ['None_0', 'None_0', 'None_0', 'None_0', 'None_0']
+
+    for (tileType, tiles) in data.items():
+        for tile in tiles:
+            new_distance = calculateMeanDistance(meanVector, tile)
             for i, score in enumerate(distanceArray):
                 if (new_distance < score):
                     distanceArray[i] = new_distance
@@ -332,6 +361,7 @@ def calculateSliceColor_Median(slice):
     r = np.median(slice[:, :, 2])
     return [b, g, r]
 
+
 def calculateSliceColor_Mean(slice):
     b_mean = slice[:, :, 0].mean()
     g_mean = slice[:, :, 1].mean()
@@ -339,26 +369,33 @@ def calculateSliceColor_Mean(slice):
 
     return [b_mean, g_mean, r_mean]
 
+
 def getScore(sliceTypes):
     def startBurning(startPos, burningImage):
         burnQueue = deque()
         currentIsland = []
         burnQueue.append(startPos)
-        while(len(burnQueue) > 0):
+        while (len(burnQueue) > 0):
             nextpos = burnQueue.pop()
             currentIsland.append([nextpos[0], nextpos[1]])
-            if(nextpos[0]- 1 >= 0 and [nextpos[0]- 1,nextpos[1]] not in currentIsland and [nextpos[0]- 1,nextpos[1]] not in burnQueue and burningImage[nextpos[0]][nextpos[1]].split("_")[0] ==
-                    burningImage[nextpos[0]-1][nextpos[1]].split("_")[0]):
+            if (nextpos[0] - 1 >= 0 and [nextpos[0] - 1, nextpos[1]] not in currentIsland and [nextpos[0] - 1, nextpos[
+                1]] not in burnQueue and burningImage[nextpos[0]][nextpos[1]].split("_")[0] ==
+                    burningImage[nextpos[0] - 1][nextpos[1]].split("_")[0]):
                 burnQueue.append([nextpos[0] - 1, nextpos[1]])
-            if (nextpos[0] + 1 <= 4 and [nextpos[0]+ 1,nextpos[1]] not in currentIsland and [nextpos[0]+ 1,nextpos[1]] not in burnQueue and burningImage[nextpos[0]][nextpos[1]].split("_")[0] ==
+            if (nextpos[0] + 1 <= 4 and [nextpos[0] + 1, nextpos[1]] not in currentIsland and [nextpos[0] + 1, nextpos[
+                1]] not in burnQueue and burningImage[nextpos[0]][nextpos[1]].split("_")[0] ==
                     burningImage[nextpos[0] + 1][nextpos[1]].split("_")[0]):
                 burnQueue.append([nextpos[0] + 1, nextpos[1]])
-            if (nextpos[1] - 1 >= 0 and [nextpos[0],nextpos[1]-1] not in currentIsland and [nextpos[0],nextpos[1]-1] not in burnQueue and burningImage[nextpos[0]][nextpos[1]].split("_")[0] ==
-                    burningImage[nextpos[0]][nextpos[1]-1].split("_")[0]):
+            if (nextpos[1] - 1 >= 0 and [nextpos[0], nextpos[1] - 1] not in currentIsland and [nextpos[0], nextpos[
+                                                                                                               1] - 1] not in burnQueue and
+                    burningImage[nextpos[0]][nextpos[1]].split("_")[0] ==
+                    burningImage[nextpos[0]][nextpos[1] - 1].split("_")[0]):
                 burnQueue.append([nextpos[0], nextpos[1] - 1])
-            if (nextpos[1] + 1 <= 4 and [nextpos[0],nextpos[1] + 1] not in currentIsland and [nextpos[0],nextpos[1]+1] not in burnQueue and burningImage[nextpos[0]][nextpos[1]].split("_")[0] ==
+            if (nextpos[1] + 1 <= 4 and [nextpos[0], nextpos[1] + 1] not in currentIsland and [nextpos[0], nextpos[
+                                                                                                               1] + 1] not in burnQueue and
+                    burningImage[nextpos[0]][nextpos[1]].split("_")[0] ==
                     burningImage[nextpos[0]][nextpos[1] + 1].split("_")[0]):
-                burnQueue.append([nextpos[0], nextpos[1]+1])
+                burnQueue.append([nextpos[0], nextpos[1] + 1])
         return currentIsland
 
     ArrayOfIslands = []
@@ -370,7 +407,7 @@ def getScore(sliceTypes):
                     found = True
                     break
             if not found:
-                ArrayOfIslands.append(startBurning([y,x], sliceTypes))
+                ArrayOfIslands.append(startBurning([y, x], sliceTypes))
     ArrayOfIslandsAsCrowns = []
     for currentIsland in ArrayOfIslands:
         currentIslandAsCrowns = []
@@ -381,18 +418,19 @@ def getScore(sliceTypes):
     score = 0
     print(ArrayOfIslandsAsCrowns)
     for island in ArrayOfIslandsAsCrowns:
-        score += len(island)*np.sum(island)
+        score += len(island) * np.sum(island)
     print(score)
     return score
+
+
 ############################################ Method calls
 
-
-saveTileVectors()
+saveTileVectorDictionary()
 
 ROI = return_single_image(gameboardList, 23)
-# mROI = cv.medianBlur(ROI, 5)
 slices = slice_roi(ROI)
 sliceTypes = []
+
 for y, row in enumerate(slices):
     sliceTypeRow = []
     for x, slice in enumerate(row):
@@ -413,11 +451,10 @@ for y, row in enumerate(slices):
 
         # print(f'({y, x}). (BGR):{int(slices[y][x][:, :, 0].mean()), int(slices[y][x][:, :, 1].mean()), int(slices[y][x][:, :, 2].mean())}. (Center,Border): {defineCenterAndBorder(slice)}')
     sliceTypes.append(sliceTypeRow)
-#print(sliceTypes)
-score = getScore(sliceTypes)
-saveTileVectorDictionary()
-print(loadTileVectorDictionary())
-cv.imshow('Roi_with_contours', ROI)
 
+print(sliceTypes)
+
+cv.imshow('Roi_with_contours', ROI)
 # cv.imshow('Slice', slices[4][2])
+
 cv.waitKey(0)
