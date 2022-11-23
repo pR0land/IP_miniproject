@@ -305,23 +305,21 @@ def calculateModeDistance(slice, data):
     return math.sqrt((slice[0] - data[0]) ** 2 + (slice[1] - data[1]) ** 2 + (slice[2] - data[2]) ** 2)
 
 
-def calculateMeanDistance(slice, data):
+def calculateEuclidianDist(slice, data):
     return math.sqrt((slice[0] - data[0]) ** 2 + (slice[1] - data[1]) ** 2 + (slice[2] - data[2]) ** 2)
 
 
 def kNearestNeighbor(slice, data):
-    meanVector = calculateSliceColor_Mean(slice)
+    sliceFeatureVector = calculateSliceColor_Mean(slice)
 
-    distance = 20
-    currentType = 'None_0'
+    distance, currentType = 20.0, 'None_0'
 
     for (tileType, tiles) in data.items():
         for tile in tiles:
-            new_distance = calculateMeanDistance(meanVector, tile)
-            if (new_distance < distance):
-                distance = new_distance
+            newDistance = calculateEuclidianDist(sliceFeatureVector, tile)
+            if (newDistance < distance):
+                distance = newDistance
                 currentType = tileType
-                break
 
     return [currentType, distance]
 
@@ -335,7 +333,7 @@ def kNearestNeighbor_old(slice, data):
 
     for (tileType, tiles) in data.items():
         for tile in tiles:
-            new_distance = calculateMeanDistance(meanVector, tile)
+            new_distance = calculateEuclidianDist(meanVector, tile)
             for i, score in enumerate(distanceArray):
                 if (new_distance < score):
                     distanceArray[i] = new_distance
