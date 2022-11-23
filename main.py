@@ -66,7 +66,7 @@ def return_single_image(list, index):
     return list[index]
 
 
-def slice_roi(roi):
+def sliceROI(roi):
     output = []
     for y in range(0, roi.shape[0], int(roi.shape[0] / 5)):
         y_line = []
@@ -421,38 +421,49 @@ def getScore(sliceTypes):
     return score
 
 
+def getAllSliceTypes(slices):
+    sliceTypes = []
+
+    for y, row in enumerate(slices):
+        sliceTypeRow = []
+        for x, slice in enumerate(row):
+            data = loadTileVectorDictionary()
+            sliceType, distance = kNearestNeighbor(slice, data)
+
+            sliceTypeRow.append(sliceType)
+            # print(calculateSliceColor_Median(slice))
+            # print(calculateSliceColor_Mode(slice))
+
+            x_coord = int((x * ROI.shape[1] / 5) + 5)
+            y_coord = int((y * ROI.shape[0] / 5) + ROI.shape[0] / 20)
+
+            cv.putText(ROI, f'{sliceType}:', (x_coord, y_coord + 00), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+            cv.putText(ROI, f'{int(distance)}', (x_coord, y_coord + 15), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+            cv.imshow(f'{y, x}', slice)
+            # cv.putText(ROI, f'{sliceType[1]}: {int(distance)}', (x_coord, y_coord + 15), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+            # cv.putText(ROI, f'{sliceType[2]}: {int(distance)}', (x_coord, y_coord + 30), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+            # cv.putText(ROI, f'{sliceType[3]}: {int(distance)}', (x_coord, y_coord + 45), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+
+            # print(f'({y, x}). (BGR):{int(slices[y][x][:, :, 0].mean()), int(slices[y][x][:, :, 1].mean()), int(slices[y][x][:, :, 2].mean())}. (Center,Border): {defineCenterAndBorder(slice)}')
+        sliceTypes.append(sliceTypeRow)
+
+    return sliceTypes
+
 ############################################ Method calls
 
-saveTileVectorDictionary()
 
-ROI = return_single_image(gameboardList, 23)
-slices = slice_roi(ROI)
-sliceTypes = []
 
-for y, row in enumerate(slices):
-    sliceTypeRow = []
-    for x, slice in enumerate(row):
-        sliceType, distance = getType(slice, f'{y, x}')
-        sliceTypeRow.append(sliceType)
-        # print(calculateSliceColor_Median(slice))
-        # print(calculateSliceColor_Mode(slice))
 
-        x_coord = int((x * ROI.shape[1] / 5) + 5)
-        y_coord = int((y * ROI.shape[0] / 5) + ROI.shape[0] / 20)
 
-        cv.putText(ROI, f'{sliceType}:', (x_coord, y_coord + 00), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
-        cv.putText(ROI, f'{int(distance)}', (x_coord, y_coord + 15), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
-        cv.imshow(f'{y, x}', slice)
-        # cv.putText(ROI, f'{sliceType[1]}: {int(distance)}', (x_coord, y_coord + 15), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
-        # cv.putText(ROI, f'{sliceType[2]}: {int(distance)}', (x_coord, y_coord + 30), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
-        # cv.putText(ROI, f'{sliceType[3]}: {int(distance)}', (x_coord, y_coord + 45), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
 
-        # print(f'({y, x}). (BGR):{int(slices[y][x][:, :, 0].mean()), int(slices[y][x][:, :, 1].mean()), int(slices[y][x][:, :, 2].mean())}. (Center,Border): {defineCenterAndBorder(slice)}')
-    sliceTypes.append(sliceTypeRow)
 
-print(sliceTypes)
 
-cv.imshow('Roi_with_contours', ROI)
-# cv.imshow('Slice', slices[4][2])
+if __name__ == "__main__":
+    ROI = return_single_image(gameboardList, 23)
+    # saveTileVectorDictionary()
+    loadTileVectorDictionary()
+    sliceArray = sliceROI(ROI)
+    getAllSliceTypes(sliceArray)
 
-cv.waitKey(0)
+    cv.imshow('Roi_with_contours', ROI)
+    cv.waitKey(0)
