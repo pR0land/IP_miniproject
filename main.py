@@ -12,6 +12,7 @@ gameareasList = []
 
 tileTypes = ['water_0', 'water_1', 'desert_0', 'desert_1', 'forest_0', 'forest_1', 'grass_0', 'grass_1',
              'grass_2', 'mine_0', 'mine_1', 'mine_2', 'mine_3', 'waste_0', 'waste_1', 'waste_2']
+
 binsize = 8
 
 
