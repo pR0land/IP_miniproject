@@ -315,10 +315,10 @@ def calculateSliceColor_Median(slice):
     return [b, g, r]
 
 def calculateSliceColor_Mean(slice):
-    b = slice[:, :, 0].mean()
-    g = slice[:, :, 1].mean()
-    r = slice[:, :, 2].mean()
-    return [b, g, r]
+    b_mean = slice[:, :, 0].mean()
+    g_mean = slice[:, :, 1].mean()
+    r_mean = slice[:, :, 2].mean()
+    return [b_mean, g_mean, r_mean]
 
 def getScore(sliceTypes):
     def startBurning(startPos, burningImage):
