@@ -108,65 +108,6 @@ def defineCenterAndBorder(slice):
 def getType(slice, name):
     data = loadTileVectorDictionary()
     type, distance = kNearestNeighbor(slice, data)
-
-    """
-
-
-    distance = [48, 48, 48, 10000]
-    type = ['None', 'None', 'None', 'Nej']
-
-    meanArray = [[150, 80, 14, 'wp'], [113, 80, 43, 'w1k'],
-                 [22, 60, 46, 'fp'], [27, 62, 57, 'f1k'],
-                 [7, 155, 179, 'dp'], [19, 142, 169, 'd1k'],
-                 [26, 51, 59, 'mp'], [27, 68, 77, 'm1k'], [26, 51, 61, 'm2k'], [33, 62, 73, 'm3k'],
-                 [60, 100, 111, 'wlp'], [54, 93, 104, 'wl1k'], [48, 89, 103, 'wl2k'],
-                 [28, 146, 100, 'gp'], [25, 116, 103, 'g1k'], [34, 126, 114, 'g2k']]
-
-    borderMeanArray = [[136, 79, 23, 'wp'], [126, 73, 24, 'w1k'],
-                       [23, 72, 61, 'fp'], [22, 67, 59, 'f1k'],
-                       [15, 160, 180, 'dp'], [16, 151, 174, 'd1k'],
-                       [19, 37, 43, 'mp'], [26, 38, 42, 'm1k'], [22, 40, 47, 'm2k'], [25, 39, 46, 'm3k'],
-                       [56, 102, 114, 'wlp'], [58, 102, 112, 'wl1k'], [50, 98, 112, 'wl2k'],
-                       [31, 140, 100, 'gp'], [25, 127, 91, 'g1k'], [32, 137, 105, 'g2k']]
-
-    centerMeanArray = [[162, 79, 5, 'wp'], [97, 81, 54, 'w1k'],
-                       [18, 43, 28, 'fp'], [29, 57, 55, 'f1k'],
-                       [9, 172, 194, 'dp'], [21, 135, 161, 'd1k'],
-                       [34, 54, 61, 'mp'], [34, 58, 67, 'm1k'], [31, 67, 83, 'm2k'], [38, 73, 91, 'm3k'],
-                       [58, 93, 103, 'wlp'], [50, 86, 98, 'wl1k'], [45, 83, 96, 'wl2k'],
-                       [27, 151, 98, 'gp'], [24, 103, 100, 'g1k'], [37, 111, 122, 'g2k']]
-
-
-    for i, tile_type in enumerate(meanArray):
-        new_distance = math.sqrt((B - tile_type[0]) ** 2 + (G - tile_type[1]) ** 2 + (R - tile_type[2]) ** 2)
-        if new_distance < distance[0]:
-            distance[0] = new_distance
-            type[0] = tile_type[3]
-
-    for i, tile_type in enumerate(borderMeanArray):
-        new_distance = math.sqrt((B - tile_type[0]) ** 2 + (G - tile_type[1]) ** 2 + (R - tile_type[2]) ** 2)
-        if new_distance < distance[1]:
-            distance[1] = new_distance
-            type[1] = tile_type[3]
-
-    for i, tile_type in enumerate(centerMeanArray):
-        new_distance = math.sqrt((B - tile_type[0]) ** 2 + (G - tile_type[1]) ** 2 + (R - tile_type[2]) ** 2)
-        if new_distance < distance[2]:
-            distance[2] = new_distance
-            type[2] = tile_type[3]
-
-    sliceVector = calculateImageHistogramBinVector(slice, binsize, name)
-    # distance = 300
-    # type[3] = 'Nej'
-
-    for tileType, featureVector in feature_vectors.items():
-        new_distance = calculateEuclidianDistance(sliceVector, featureVector)
-        # print(new_distance)
-        if new_distance < distance[3]:
-            distance[3] = new_distance
-            type[3] = tileType
-    """
-
     return [type, distance]
 
 
@@ -227,13 +168,6 @@ def calculateImageHistogramBinVector(image, bins: int, name):
 
         return hist_vector
 
-    # normaliserer histogrammet således at værdierne ligger mellem 0 og 1
-    """
-    hist = hist.astype(np.float64)
-    if (hist.max() != 0 or None):
-        hist /= int(hist.max())
-        hist *= factor
-    """
 
     return [createHistVector(B_hist[0]), createHistVector(G_hist[0]), createHistVector(R_hist[0])]
 
@@ -255,29 +189,6 @@ def loadTileVectorDictionary():
     featureVectors = np.load(f'King Domino dataset/Cropped_Tiles/featureVectors.npy', allow_pickle=True).tolist()
     return featureVectors
 
-
-"""
-def saveTileVectors():
-    def saveVector(fileName, tileType):
-        img = cv.imread(f'King Domino dataset/Cropped_Tiles/{tileType}/{fileName}.jpg')
-        np.save(f'King Domino dataset/Cropped_Tiles/{tileType}/{fileName}', calculateSliceColor_Mean(img))
-
-    for tileType in tileTypes:
-        for tile in range(10):
-            saveVector(tile, tileType)
-
-
-def createTileFeaturevectorArray():
-    featureVectors = {}
-
-    for tileType in tileTypes:
-        tileArray = []
-        for tile in range(10):
-            tileArray.append(np.load(f'King Domino dataset/Cropped_Tiles/{tileType}/{tile}.npy', allow_pickle=True))
-        featureVectors[tileType] = tileArray
-
-    return featureVectors
-"""
 
 
 def calculateBinIndexDistance(sliceBINdexVector, data):
@@ -463,21 +374,28 @@ def addTileText(image, slices, sliceTypes, distances):
 
 if __name__ == "__main__":
     # INDLÆS DET BILLEDE SOM VI VIL ARBEJDE MED
-    ROI = return_single_image(gameboardList, 23)
+    print("Loading Picture")
+    ROI = return_single_image(gameboardList, 59)
 
     # INDLÆS DATA
-    # saveTileVectorDictionary()
+    print("Loading Data")
+    #saveTileVectorDictionary()
     data = loadTileVectorDictionary()
 
     # OPRET ARRAY AF SLICES FRA GIVNE SPILLEPLADEBILLEDE
+    print("Slicing Roi")
     sliceArray = sliceROI(ROI)
 
+    print("Distinguishing Types")
     # BESTEM ET ARRAY MED ALLE SLICES TILE-TYPER I MED TILSVARENDE KOORDINATER
     sliceTypeArray, distanceArray = getAllSliceTypes(sliceArray, data)
-
+    print("Computing score")
+    score = getScore(sliceTypeArray)
+    print(score)
+    print("Adding text")
     # TILFØJ TEKST TIL ET OUTPUT BILLEDE
     ROI_text = addTileText(ROI, sliceArray, sliceTypeArray, distanceArray)
-
+    print("Showing image")
     # VIS BILLEDE
     cv.imshow('ROI_with_text', ROI_text)
     #cv.imshow('ROI',ROI)
