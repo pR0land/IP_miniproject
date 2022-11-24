@@ -5,45 +5,54 @@ import math
 from matplotlib import pyplot as plt
 from scipy import stats
 from statistics import mode
+import Gaussian as g
+import bordering as b
+import Thresholding as t
+import morphology as m
+import time
 
 gameboardList = []
 gameareasList = []
 
-tileTypes = ['water_0', 'water_1', 'desert_0', 'desert_1', 'forest_0', 'forest_1', 'grass_0', 'grass_1',
-             'grass_2', 'mine_0', 'mine_1', 'mine_2', 'mine_3', 'waste_0', 'waste_1', 'waste_2']
+tileTypes = ['water_0', 'water_1',
+             'desert_0', 'desert_1',
+             'forest_0', 'forest_1',
+             'grass_0', 'grass_1', 'grass_2',
+             'mine_0', 'mine_1', 'mine_2', 'mine_3',
+             'waste_0', 'waste_1', 'waste_2']
 
 binsize = 8
 
 
-def add_boards():
-    temp_list = []
+def addBoards():
+    tempList = []
     for i in range(1, 75):
-        pic_path = 'King Domino dataset/Cropped and perspective corrected boards/' + str(i) + '.jpg'
-        pic_temp = cv.imread(pic_path)
-        temp_list.append(pic_temp)
-    return temp_list
+        picPath = 'King Domino dataset/Cropped and perspective corrected boards/' + str(i) + '.jpg'
+        picTemp = cv.imread(picPath)
+        tempList.append(picTemp)
+    return tempList
 
 
-def add_areas():
-    temp_list = []
+def addAreas():
+    tempList = []
     for i in range(1, 19):
-        pic_path = 'King Domino dataset/Full game areas/DSC_' + str(1262 + i) + '.JPG'
-        pic_temp = cv.imread(pic_path)
-        temp_list.append(pic_temp)
-    return temp_list
+        picPath = 'King Domino dataset/Full game areas/DSC_' + str(1262 + i) + '.JPG'
+        picTemp = cv.imread(picPath)
+        tempList.append(picTemp)
+    return tempList
 
 
-gameboardList.extend(add_boards())
-gameareasList.extend(add_areas())
+gameboardList.extend(addBoards())
+gameareasList.extend(addAreas())
 
 
-def show_list_of_images(list):
+def showListOfImages(list):
     for i in range(len(list)):
         cv.imshow(str(i + 1), list[i])
     cv.waitKey(0)
 
 
-def show_single_image(list, index):
+def showSingleImage(list, index):
     if len(list) > index > 0:
         cv.imshow(str(index + 1), list[index])
         cv.waitKey(0)
@@ -57,7 +66,7 @@ def show_single_image(list, index):
         cv.waitKey(0)
 
 
-def return_single_image(list, index):
+def returnSingleImage(list, index):
     if len(list) < index or index < 0:
         if len(list) < index:
             index = len(list) - 1
@@ -80,35 +89,51 @@ def sliceROI(roi):
 
 
 def defineCenterAndBorder(slice):
-    center = slice[int(slice.shape[0] / 8):int((slice.shape[0] / 8) * 7),
-             int(slice.shape[1] / 8):int((slice.shape[1] / 8) * 7)]
-    centerMean = [int(center[:, :, 0].mean()), int(center[:, :, 1].mean()), int(center[:, :, 2].mean())]
+    center = slice[int(slice.shape[0] / 4):int((slice.shape[0] / 4) * 3),
+             int(slice.shape[1] / 4):int((slice.shape[1] / 4) * 3)]
+    centerMean = [center[:, :, 0].mean(), center[:, :, 1].mean(), center[:, :, 2].mean()]
 
-    top_border = slice[0:int(slice.shape[0] / 8), :]
-    bot_border = slice[int(slice.shape[0] - slice.shape[0] / 8):slice.shape[0], :]
-    left_border = slice[int(slice.shape[0] / 8):int(slice.shape[0] - slice.shape[0] / 8), 0:int(slice.shape[1] / 8)]
-    right_border = slice[int(slice.shape[0] / 8):int(slice.shape[0] - slice.shape[0] / 8),
-                   int(slice.shape[1] - slice.shape[1] / 8):slice.shape[1]]
+    topBorder = slice[0:int(slice.shape[0] / 4), :]
+    botBorder = slice[int(slice.shape[0] - slice.shape[0] / 4):slice.shape[0], :]
+    leftBorder = slice[int(slice.shape[0] / 4):int(slice.shape[0] - slice.shape[0] / 4), 0:int(slice.shape[1] / 4)]
+    rightBorder = slice[int(slice.shape[0] / 4):int(slice.shape[0] - slice.shape[0] / 4),
+                   int(slice.shape[1] - slice.shape[1] / 4):slice.shape[1]]
 
-    border_mean = [int((top_border[:, :, 0].mean() + bot_border[:, :, 0].mean() + left_border[:, :,
-                                                                                  0].mean() + right_border[:, :,
-                                                                                              0].mean()) / 4),
-                   int((top_border[:, :, 1].mean() + bot_border[:, :, 1].mean() + left_border[:, :,
-                                                                                  1].mean() + right_border[:, :,
-                                                                                              1].mean()) / 4),
-                   int((top_border[:, :, 2].mean() + bot_border[:, :, 2].mean() + left_border[:, :,
-                                                                                  2].mean() + right_border[:, :,
-                                                                                              2].mean()) / 4)]
+    border_mean = [(topBorder[:, :, 0].mean() + botBorder[:, :, 0].mean()
+                        + leftBorder[:, :,0].mean() + rightBorder[:, :,0].mean() / 4),
+                   ((topBorder[:, :, 1]).mean() + botBorder[:, :, 1].mean()
+                        + leftBorder[:, :, 1].mean() + rightBorder[:, :,1].mean() / 4),
+                   ((topBorder[:, :, 2].mean() + botBorder[:, :, 2]).mean()
+                        + leftBorder[:, :,2].mean() + rightBorder[:, :,2].mean() / 4)]
 
-    cut_slice = [centerMean, border_mean]
+    cutSlice = [centerMean, border_mean]
 
-    return cut_slice
+    return cutSlice
 
 
 def getType(slice, name):
     data = loadTileVectorDictionary()
-    type, distance = kNearestNeighbor(slice, data)
+    type, distance = singleNearestNeighbor(slice, data)
     return [type, distance]
+
+
+def evenLightingSQRT(image):
+    output = image.astype("float64")
+    # while output.mean() < 125:
+    for channel in range(image.shape[2]):
+        # output[:,:,channel] /= 255
+        # output[:, :, channel] = np.sqrt(output[:,:,channel])
+        # output[:, :, channel] *= 255
+        output[:, :, channel] = np.cbrt(output[:, :, channel])
+
+    return output.astype("uint8")
+
+
+def evenLightingCubed(image):
+    output = image.astype("float64")
+    for channel in range(image.shape[2]):
+        output[:, :, channel] = output[:, :, channel] ** 2
+    return output.astype("uint8")
 
 
 def calculateEuclidianDistance(feature_vector1, feature_vector2):
@@ -117,12 +142,12 @@ def calculateEuclidianDistance(feature_vector1, feature_vector2):
 
 
 def calculateImageHistogramBinVector(image, bins: int, name):
-    def showHist(fig_name):
+    def showHist(figName):
         B_h, B_bins = np.histogram(image[:, :, 0], bins, [0, 256])
         G_h, G_bins = np.histogram(image[:, :, 1], bins, [0, 256])
         R_h, R_bins = np.histogram(image[:, :, 2], bins, [0, 256])
         fig = plt.figure()
-        fig.suptitle(fig_name, fontsize=15)
+        fig.suptitle(figName, fontsize=15)
         width = 0.7 * (B_bins[1] - B_bins[0])
         plt.subplot(1, 3, 1)
         plt.ylim([0, 10000])
@@ -150,24 +175,23 @@ def calculateImageHistogramBinVector(image, bins: int, name):
     # showHist(name)
 
     def createHistVector(hist):
-        hist_max = max(hist)
+        histMax = max(hist)
 
-        if list(hist).index(hist_max) == 0:
-            hist_index = 1
-        elif list(hist).index(hist_max) == binsize - 1:
-            hist_index = binsize - 2
+        if list(hist).index(histMax) == 0:
+            histIndex = 1
+        elif list(hist).index(histMax) == binsize - 1:
+            histIndex = binsize - 2
         else:
-            hist_index = list(hist).index(hist_max)
+            histIndex = list(hist).index(histMax)
 
-        hist_lower = hist_index - 1
-        hist_upper = hist_index + 1
+        histLower = histIndex - 1
+        histUpper = histIndex + 1
 
-        indexDescriptor = (hist[hist_index] + hist[hist_lower] + hist[hist_upper]) / np.sum(hist)
+        indexDescriptor = (hist[histIndex] + hist[histLower] + hist[histUpper]) / np.sum(hist)
 
-        hist_vector = [indexDescriptor, hist_lower, hist_index, hist_upper]
+        histVector = [indexDescriptor, histLower, histIndex, histUpper]
 
-        return hist_vector
-
+        return histVector
 
     return [createHistVector(B_hist[0]), createHistVector(G_hist[0]), createHistVector(R_hist[0])]
 
@@ -179,7 +203,12 @@ def saveTileVectorDictionary():
         tileArray = []
         for tile in range(10):
             img = cv.imread(f'King Domino dataset/Cropped_Tiles/{tileType}/{tile}.jpg')
-            tileArray.append(np.array(calculateSliceColor_Mean(img)))
+            diff = calculateDiffereneOfGaussian(img)
+            gaussianMean = calculateGaussianMean(diff)
+            lightCorrectedImg = evenLightingSQRT(img)
+            centerMean, borderMean = defineCenterAndBorder(lightCorrectedImg)
+            tileArray.append(
+                [np.array(calculateSliceColor_Mean(lightCorrectedImg)), np.array(centerMean), np.array(borderMean), np.array(gaussianMean)])
         featureVectors[tileType] = tileArray
 
     np.save(f'King Domino dataset/Cropped_Tiles/featureVectors', featureVectors)
@@ -220,13 +249,19 @@ def calculateModeDistance(slice, data):
 
 
 def calculateEuclidianDist(slice, data):
-    return math.sqrt((slice[0] - data[0]) ** 2 + (slice[1] - data[1]) ** 2 + (slice[2] - data[2]) ** 2)
+    meanDistance = ((slice[0][0] - data[0][0]) ** 2 + (slice[0][1] - data[0][1]) ** 2 + (slice[0][2] - data[0][2]) ** 2)
+    centerDistance = ((slice[1][0] - data[1][0]) ** 2 + (slice[1][1] - data[1][1]) ** 2 + (slice[1][2] - data[1][2]) ** 2)
+    borderDistance = ((slice[2][0] - data[2][0]) ** 2 + (slice[2][1] - data[2][1]) ** 2 + (slice[2][2] - data[2][2]) ** 2)
+    gaussianDistance =((slice[3][0] - data[3][0]) ** 2 + (slice[3][1] - data[3][1]) ** 2 + (slice[3][2] - data[3][2]) ** 2)
+    return math.sqrt(gaussianDistance)
 
+def singleNearestNeighbor(slice, data):
+    diff = calculateDiffereneOfGaussian(slice)
+    gaussianMean = calculateGaussianMean(diff)
+    centerMean, borderMean = defineCenterAndBorder(slice)
+    sliceFeatureVector = [np.array(calculateSliceColor_Mean(slice)), np.array(centerMean), np.array(borderMean),np.array(gaussianMean)]
 
-def kNearestNeighbor(slice, data):
-    sliceFeatureVector = calculateSliceColor_Mean(slice)
-
-    distance, currentType = 20.0, 'None_0'
+    distance, currentType = 20, 'None_0'
 
     for (tileType, tiles) in data.items():
         for tile in tiles:
@@ -238,8 +273,12 @@ def kNearestNeighbor(slice, data):
     return [currentType, distance]
 
 
-def kNearestNeighbor_old(slice, data):
-    meanVector = calculateSliceColor_Mean(slice)
+def kNearestNeighbor(slice, data):
+    diff = calculateDiffereneOfGaussian(slice)
+    gaussianMean = calculateGaussianMean(diff)
+    centerMean, borderMean = defineCenterAndBorder(slice)
+    sliceFeatureVector = [np.array(calculateSliceColor_Mean(slice)), np.array(centerMean), np.array(borderMean),
+                          np.array(gaussianMean)]
 
     th = 20  # threshold
     distanceArray = [th, th, th, th, th]
@@ -247,15 +286,15 @@ def kNearestNeighbor_old(slice, data):
 
     for (tileType, tiles) in data.items():
         for tile in tiles:
-            new_distance = calculateEuclidianDist(meanVector, tile)
+            newDistance = calculateEuclidianDist(sliceFeatureVector, tile)
             for i, score in enumerate(distanceArray):
-                if (new_distance < score):
-                    distanceArray[i] = new_distance
+                if (newDistance < score):
+                    distanceArray[i] = newDistance
                     tileTypeArray[i] = tileType
                     break
-
-    tileType = tileTypeArray[0]
-    distance = distanceArray[0]
+    print(tileTypeArray)
+    tileType = mode(tileTypeArray)
+    distance = distanceArray[tileTypeArray.index(tileType)]
 
     return [tileType, distance]
 
@@ -273,13 +312,39 @@ def calculateSliceColor_Median(slice):
     r = np.median(slice[:, :, 2])
     return [b, g, r]
 
-
+def calculateGaussianMean(slice):
+    b = []
+    g =[]
+    r = []
+    for y, row in enumerate(slice):
+        for x, pixel in enumerate(row):
+            if t.calculateIntensity(pixel) > 0.02:
+                b.append(pixel[0])
+                g.append(pixel[1])
+                r.append(pixel[2])
+    if len(b) > 0:
+        b = normalize(np.array(b)).mean()
+    else:
+        b = 0
+    if len(g) > 0:
+        g = normalize(np.array(g)).mean()
+    else:
+        g = 0
+    if len(r) > 0:
+        r = normalize(np.array(r)).mean()
+    else:
+        r = 0
+    return [b,g,r]
+def normalize(array):
+    return (array - np.min(array))/np.ptp(array)
 def calculateSliceColor_Mean(slice):
-    b_mean = slice[:, :, 0].mean()
-    g_mean = slice[:, :, 1].mean()
-    r_mean = slice[:, :, 2].mean()
 
-    return [b_mean, g_mean, r_mean]
+    bMean = normalize(slice[:, :, 0]).mean()
+    gMean = normalize(slice[:, :, 1]).mean()
+    rMean = normalize(slice[:, :, 2]).mean()
+
+
+    return [bMean, gMean, rMean]
 
 
 def getScore(sliceTypes):
@@ -328,10 +393,11 @@ def getScore(sliceTypes):
         ArrayOfIslandsAsCrowns.append(currentIslandAsCrowns)
 
     score = 0
-    print(ArrayOfIslandsAsCrowns)
+    print(f'crownArray:\n{ArrayOfIslandsAsCrowns}')
     for island in ArrayOfIslandsAsCrowns:
         score += len(island) * np.sum(island)
-    print(score)
+
+    print(f'totalScore:\n{score}')
     return score
 
 
@@ -344,7 +410,7 @@ def getAllSliceTypes(slices, data):
         distanceRow = []
 
         for x, slice in enumerate(row):
-            sliceType, distance = kNearestNeighbor(slice, data)
+            sliceType, distance = singleNearestNeighbor(slice, data)
             sliceTypeRow.append(sliceType)
             distanceRow.append(distance)
         sliceTypes.append(sliceTypeRow)
@@ -354,49 +420,96 @@ def getAllSliceTypes(slices, data):
 
 
 def addTileText(image, slices, sliceTypes, distances):
-    output_image = image.copy()
+    outputImage = image.copy()
 
     for y, row in enumerate(slices):
         for x, slice in enumerate(row):
-            x_coord = int((x * output_image.shape[1] / 5) + 5)
-            y_coord = int((y * output_image.shape[0] / 5) + output_image.shape[0] / 20)
+            xCoord = int((x * outputImage.shape[1] / 5) + 5)
+            yCoord = int((y * outputImage.shape[0] / 5) + outputImage.shape[0] / 20)
 
-            cv.putText(output_image, f'{sliceTypes[y][x]}:', (x_coord, y_coord + 00), cv.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
-            cv.putText(output_image, f'{int(distances[y][x])}', (x_coord, y_coord + 15), cv.FONT_HERSHEY_PLAIN, 1,
+            cv.putText(outputImage, f'{sliceTypes[y][x]}:', (xCoord, yCoord + 00), cv.FONT_HERSHEY_PLAIN, 1,
+                       (255, 255, 255))
+            cv.putText(outputImage, f'{distances[y][x]:.2f}', (xCoord, yCoord + 15), cv.FONT_HERSHEY_PLAIN, 1,
                        (255, 255, 255))
 
             # cv.imshow(f'{y, x}', slice)
 
-    return output_image
+    return outputImage
+
+
+def calculateDiffereneOfGaussian(image):
+    borderRoi = b.addborder_reflect(image, 15)
+    kernel = g.makeGuassianKernel(15, 7)
+    blurredRoi = g.convolve(borderRoi, kernel)
+    differenceImg = cv.subtract(image, blurredRoi)
+
+    for channel in range(differenceImg.shape[2]):
+        differenceImg[:,:,channel] = normalize(differenceImg[:,:,channel])*255
+    return differenceImg
+
 
 
 ### Main method call ###
 
 if __name__ == "__main__":
-    # INDLÆS DET BILLEDE SOM VI VIL ARBEJDE MED
-    print("Loading Picture")
-    ROI = return_single_image(gameboardList, 59)
+    print("# LOADING IMAGE : ", end = '')
+    st = time.time()
+    ROI = returnSingleImage(gameboardList, 0)
+    print(f'{time.time()-st:.4f} s')
 
-    # INDLÆS DATA
-    print("Loading Data")
-    #saveTileVectorDictionary()
+    print("# CORRECTING IMAGE DATA : ", end = '')
+    st = time.time()
+    evenROI = evenLightingSQRT(ROI)
+    print(f'{time.time()-st:.4f} s')
+
+    print("# CALCLUTATING DIFFERENCE OF GAUSSIAN : ", end = '')
+    st = time.time()
+    diff = calculateDiffereneOfGaussian(ROI)
+    cv.imshow('diff', diff)
+    print(f'{time.time()-st:.4f} s')
+
+    print("# THRESHOLDING GAUSSIAN DIFFERENCE : ", end = '')
+    st = time.time()
+    tresholdedROI = t.makeImageBinaryIntensityThreshold(diff, 0.02)
+    print(f'{time.time()-st:.4f} s')
+
+    print("# PERFORMING MORPHOLOGY ON BINARY IMAGE : ", end = '')
+    st = time.time()
+    closed = m.close(tresholdedROI,5)
+    eroded = m.erode(tresholdedROI,3)
+
+    cv.imshow('threshold', tresholdedROI)
+    cv.imshow('closed', closed)
+    cv.imshow('eroded', eroded)
+    print(f'{time.time()-st:.4f} s')
+
+    print("# LOADING DATA : ", end = '')
+    st = time.time()
+    saveTileVectorDictionary()
     data = loadTileVectorDictionary()
+    print(f'{time.time()-st:.4f} s')
 
-    # OPRET ARRAY AF SLICES FRA GIVNE SPILLEPLADEBILLEDE
-    print("Slicing Roi")
-    sliceArray = sliceROI(ROI)
+    print("# SLICING IMAGE : ", end = '')
+    st = time.time()
+    sliceArray = sliceROI(evenROI)
+    print(f'{time.time()-st:.4f} s')
 
-    print("Distinguishing Types")
-    # BESTEM ET ARRAY MED ALLE SLICES TILE-TYPER I MED TILSVARENDE KOORDINATER
+    print("# DECLARING SLICE TYPES : ", end = '')
+    st = time.time()
     sliceTypeArray, distanceArray = getAllSliceTypes(sliceArray, data)
-    print("Computing score")
+    print(f'{time.time()-st:.4f} s')
+
+    print("# COMPUTING SCORE")
     score = getScore(sliceTypeArray)
-    print(score)
-    print("Adding text")
-    # TILFØJ TEKST TIL ET OUTPUT BILLEDE
+
+    print("# ADDING TEXT TO IMAGE : ", end = '')
+    st = time.time()
     ROI_text = addTileText(ROI, sliceArray, sliceTypeArray, distanceArray)
-    print("Showing image")
-    # VIS BILLEDE
+    print(f'{time.time()-st:.4f} s')
+
+    print("# SHOWING IMAGE : ", end = '')
+    st = time.time()
     cv.imshow('ROI_with_text', ROI_text)
-    #cv.imshow('ROI',ROI)
+    print(f'{time.time()-st:.4f} s')
+
     cv.waitKey(0)
