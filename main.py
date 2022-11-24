@@ -89,15 +89,15 @@ def sliceROI(roi):
 
 
 def defineCenterAndBorder(slice):
-    center = slice[int(slice.shape[0] / 4):int((slice.shape[0] / 4) * 3),
-             int(slice.shape[1] / 4):int((slice.shape[1] / 4) * 3)]
+    center = slice[int(slice.shape[0] / 6):int((slice.shape[0] / 6) * 5),
+             int(slice.shape[1] / 6):int((slice.shape[1] / 6) * 5)]
     centerMean = [center[:, :, 0].mean(), center[:, :, 1].mean(), center[:, :, 2].mean()]
 
-    topBorder = slice[0:int(slice.shape[0] / 4), :]
-    botBorder = slice[int(slice.shape[0] - slice.shape[0] / 4):slice.shape[0], :]
-    leftBorder = slice[int(slice.shape[0] / 4):int(slice.shape[0] - slice.shape[0] / 4), 0:int(slice.shape[1] / 4)]
-    rightBorder = slice[int(slice.shape[0] / 4):int(slice.shape[0] - slice.shape[0] / 4),
-                   int(slice.shape[1] - slice.shape[1] / 4):slice.shape[1]]
+    topBorder = slice[5:int(slice.shape[0] / 6), :]
+    botBorder = slice[int(slice.shape[0] - slice.shape[0] / 6):slice.shape[0]-5, :]
+    leftBorder = slice[int(slice.shape[0] / 6):int(slice.shape[0] - slice.shape[0] / 6), 5:int(slice.shape[1] / 6)]
+    rightBorder = slice[int(slice.shape[0] / 6):int(slice.shape[0] - slice.shape[0] / 6),
+                   int(slice.shape[1] - slice.shape[1] / 6):slice.shape[1]-5]
 
     border_mean = [(topBorder[:, :, 0].mean() + botBorder[:, :, 0].mean()
                         + leftBorder[:, :,0].mean() + rightBorder[:, :,0].mean() / 4),
@@ -201,14 +201,15 @@ def saveTileVectorDictionary():
 
     for tileType in tileTypes:
         tileArray = []
-        for tile in range(10):
-            img = cv.imread(f'King Domino dataset/Cropped_Tiles/{tileType}/{tile}.jpg')
-            diff = calculateDiffereneOfGaussian(img)
-            gaussianMean = calculateGaussianMean(diff)
-            lightCorrectedImg = evenLightingSQRT(img)
-            centerMean, borderMean = defineCenterAndBorder(lightCorrectedImg)
-            tileArray.append(
-                [np.array(calculateSliceColor_Mean(lightCorrectedImg)), np.array(centerMean), np.array(borderMean), np.array(gaussianMean)])
+        for rotation in range(4):
+            for tile in range(10):
+                img = cv.imread(f'King Domino dataset/Cropped_Tiles/{tileType}/{rotation}/{tile}.jpg')
+                diff = calculateDiffereneOfGaussian(img)
+                gaussianMean = calculateGaussianMean(diff)
+                lightCorrectedImg = evenLightingSQRT(img)
+                centerMean, borderMean = defineCenterAndBorder(lightCorrectedImg)
+                tileArray.append(
+                    [np.array(calculateSliceColor_Mean(lightCorrectedImg)), np.array(centerMean), np.array(borderMean), np.array(gaussianMean)])
         featureVectors[tileType] = tileArray
 
     np.save(f'King Domino dataset/Cropped_Tiles/featureVectors', featureVectors)
@@ -253,7 +254,7 @@ def calculateEuclidianDist(slice, data):
     centerDistance = ((slice[1][0] - data[1][0]) ** 2 + (slice[1][1] - data[1][1]) ** 2 + (slice[1][2] - data[1][2]) ** 2)
     borderDistance = ((slice[2][0] - data[2][0]) ** 2 + (slice[2][1] - data[2][1]) ** 2 + (slice[2][2] - data[2][2]) ** 2)
     gaussianDistance =((slice[3][0] - data[3][0]) ** 2 + (slice[3][1] - data[3][1]) ** 2 + (slice[3][2] - data[3][2]) ** 2)
-    return math.sqrt(gaussianDistance)
+    return math.sqrt(meanDistance)
 
 def singleNearestNeighbor(slice, data):
     diff = calculateDiffereneOfGaussian(slice)
@@ -318,7 +319,7 @@ def calculateGaussianMean(slice):
     r = []
     for y, row in enumerate(slice):
         for x, pixel in enumerate(row):
-            if t.calculateIntensity(pixel) > 0.02:
+            if t.calculateIntensity(pixel) > 0.1:
                 b.append(pixel[0])
                 g.append(pixel[1])
                 r.append(pixel[2])
@@ -339,9 +340,9 @@ def normalize(array):
     return (array - np.min(array))/np.ptp(array)
 def calculateSliceColor_Mean(slice):
 
-    bMean = normalize(slice[:, :, 0]).mean()
-    gMean = normalize(slice[:, :, 1]).mean()
-    rMean = normalize(slice[:, :, 2]).mean()
+    bMean = slice[:, :, 0].mean()
+    gMean = slice[:, :, 1].mean()
+    rMean = slice[:, :, 2].mean()
 
 
     return [bMean, gMean, rMean]
@@ -438,8 +439,8 @@ def addTileText(image, slices, sliceTypes, distances):
 
 
 def calculateDiffereneOfGaussian(image):
-    borderRoi = b.addborder_reflect(image, 15)
-    kernel = g.makeGuassianKernel(15, 7)
+    borderRoi = b.addborder_reflect(image, 19)
+    kernel = g.makeGuassianKernel(19, 9)
     blurredRoi = g.convolve(borderRoi, kernel)
     differenceImg = cv.subtract(image, blurredRoi)
 
@@ -454,62 +455,63 @@ def calculateDiffereneOfGaussian(image):
 if __name__ == "__main__":
     print("# LOADING IMAGE : ", end = '')
     st = time.time()
-    ROI = returnSingleImage(gameboardList, 0)
-    print(f'{time.time()-st:.4f} s')
+    for i in range (0,35):
+        ROI = returnSingleImage(gameboardList, i)
+        print(f'{time.time()-st:.4f} s')
 
-    print("# CORRECTING IMAGE DATA : ", end = '')
-    st = time.time()
-    evenROI = evenLightingSQRT(ROI)
-    print(f'{time.time()-st:.4f} s')
+        print("# CORRECTING IMAGE DATA : ", end = '')
+        st = time.time()
+        evenROI = evenLightingSQRT(ROI)
+        print(f'{time.time()-st:.4f} s')
 
-    print("# CALCLUTATING DIFFERENCE OF GAUSSIAN : ", end = '')
-    st = time.time()
-    diff = calculateDiffereneOfGaussian(ROI)
-    cv.imshow('diff', diff)
-    print(f'{time.time()-st:.4f} s')
+        # print("# CALCLUTATING DIFFERENCE OF GAUSSIAN : ", end = '')
+        # st = time.time()
+        # diff = calculateDiffereneOfGaussian(ROI)
+        # cv.imshow('diff', diff)
+        # print(f'{time.time()-st:.4f} s')
+        #
+        # print("# THRESHOLDING GAUSSIAN DIFFERENCE : ", end = '')
+        # st = time.time()
+        # tresholdedROI = t.makeImageBinaryIntensityThreshold(diff, 0.1)
+        # print(f'{time.time()-st:.4f} s')
+        #
+        # print("# PERFORMING MORPHOLOGY ON BINARY IMAGE : ", end = '')
+        # st = time.time()
+        # closed = m.close(tresholdedROI,5)
+        # eroded = m.erode(tresholdedROI,3)
+        #
+        # cv.imshow('threshold', tresholdedROI)
+        # cv.imshow('closed', closed)
+        # cv.imshow('eroded', eroded)
+        # print(f'{time.time()-st:.4f} s')
 
-    print("# THRESHOLDING GAUSSIAN DIFFERENCE : ", end = '')
-    st = time.time()
-    tresholdedROI = t.makeImageBinaryIntensityThreshold(diff, 0.02)
-    print(f'{time.time()-st:.4f} s')
+        print("# LOADING DATA : ", end = '')
+        st = time.time()
+        #saveTileVectorDictionary()
+        data = loadTileVectorDictionary()
+        print(f'{time.time()-st:.4f} s')
 
-    print("# PERFORMING MORPHOLOGY ON BINARY IMAGE : ", end = '')
-    st = time.time()
-    closed = m.close(tresholdedROI,5)
-    eroded = m.erode(tresholdedROI,3)
+        print("# SLICING IMAGE : ", end = '')
+        st = time.time()
+        sliceArray = sliceROI(evenROI)
+        print(f'{time.time()-st:.4f} s')
 
-    cv.imshow('threshold', tresholdedROI)
-    cv.imshow('closed', closed)
-    cv.imshow('eroded', eroded)
-    print(f'{time.time()-st:.4f} s')
+        print("# DECLARING SLICE TYPES : ", end = '')
+        st = time.time()
+        sliceTypeArray, distanceArray = getAllSliceTypes(sliceArray, data)
+        print(f'{time.time()-st:.4f} s')
 
-    print("# LOADING DATA : ", end = '')
-    st = time.time()
-    saveTileVectorDictionary()
-    data = loadTileVectorDictionary()
-    print(f'{time.time()-st:.4f} s')
+        print("# COMPUTING SCORE")
+        score = getScore(sliceTypeArray)
 
-    print("# SLICING IMAGE : ", end = '')
-    st = time.time()
-    sliceArray = sliceROI(evenROI)
-    print(f'{time.time()-st:.4f} s')
+        print("# ADDING TEXT TO IMAGE : ", end = '')
+        st = time.time()
+        ROI_text = addTileText(ROI, sliceArray, sliceTypeArray, distanceArray)
+        print(f'{time.time()-st:.4f} s')
 
-    print("# DECLARING SLICE TYPES : ", end = '')
-    st = time.time()
-    sliceTypeArray, distanceArray = getAllSliceTypes(sliceArray, data)
-    print(f'{time.time()-st:.4f} s')
-
-    print("# COMPUTING SCORE")
-    score = getScore(sliceTypeArray)
-
-    print("# ADDING TEXT TO IMAGE : ", end = '')
-    st = time.time()
-    ROI_text = addTileText(ROI, sliceArray, sliceTypeArray, distanceArray)
-    print(f'{time.time()-st:.4f} s')
-
-    print("# SHOWING IMAGE : ", end = '')
-    st = time.time()
-    cv.imshow('ROI_with_text', ROI_text)
-    print(f'{time.time()-st:.4f} s')
+        print("# SHOWING IMAGE : ", end = '')
+        st = time.time()
+        cv.imshow(f'Gameboard NR: {i}', ROI_text)
+        print(f'{time.time()-st:.4f} s')
 
     cv.waitKey(0)
