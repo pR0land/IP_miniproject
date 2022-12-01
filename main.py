@@ -393,8 +393,8 @@ def getScore(sliceTypes):
             currentIslandAsCrowns.append(int(sliceTypes[pos[0]][pos[1]].split("_")[1]))
         ArrayOfIslandsAsCrowns.append(currentIslandAsCrowns)
 
-    score = 0
     print(f'crownArray:\n{ArrayOfIslandsAsCrowns}')
+    score = 0
     for island in ArrayOfIslandsAsCrowns:
         score += len(island) * np.sum(island)
 
